@@ -1,10 +1,10 @@
-package com.travel.auth_service;
+package com.cinema.gateway;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class AuthServiceApplicationTests {
+class GatewayApplicationTests {
 
 	@Test
 	void contextLoads() {
