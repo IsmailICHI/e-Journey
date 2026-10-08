@@ -1,4 +1,4 @@
-package com.cinema.user.exceptions;
+package com.travel.user_service.exceptions;
 
 public class BadRequestException extends RuntimeException {
     public BadRequestException(String message) {
