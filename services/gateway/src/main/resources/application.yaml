@@ -1,50 +1,65 @@
 server:
   port: 8089
+  shutdown: graceful
 
 spring:
   application:
     name: gateway
   data:
     redis:
-      host: ${REDIS_HOST:example.invalid}
+      host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   cloud:
     gateway:
+      httpclient:
+        connect-timeout: 2000
+        response-timeout: 5s
       routes:
-        # 1. User Service
         - id: user-service
-          uri: ${USER_SERVICE_URL:http://example.invalid:8081}
+          uri: ${USER_SERVICE_URL:http://user-service:8081}
           predicates:
-            - Path=/api/v1/users/**, /api/v1/auth/**
+            - Path=/api/v1/users/**, /api/v1/auth/**, /api/v1/admin/users, /api/v1/admin/users/**
 
-        # 2. Travel Service
         - id: travel-service
-          uri: ${TRAVEL_SERVICE_URL:http://example.invalid:8082}
+          uri: ${TRAVEL_SERVICE_URL:http://travel-service:8082}
           predicates:
-            - Path=/api/v1/travels/**, /api/v1/places/public
+            - Path=/api/v1/travels/**, /api/v1/places/public, /api/v1/admin/travels, /api/v1/admin/travels/**
 
-        # 3. Payment Service
         - id: payment-service
-          uri: ${PAYMENT_SERVICE_URL:http://example.invalid:8083}
+          uri: ${PAYMENT_SERVICE_URL:http://payment-service:8083}
           predicates:
-            - Path=/api/v1/payments/**
+            - Path=/api/v1/payments/**, /api/v1/admin/payments, /api/v1/admin/payments/**
 
-        # 4. Recommendation Service
         - id: recommendation-service
-          uri: ${RECOMMENDATION_SERVICE_URL:http://example.invalid:8084}
+          uri: ${RECOMMENDATION_SERVICE_URL:http://recommendation-service:8084}
           predicates:
             - Path=/api/v1/recommendations/**
 
 jwt:
-  secret: ${JWT_SECRET:example_only_not_a_real_jwt_secret}
-  # expiration: 86400000
+  secret: ${JWT_SECRET:defaultsecretkeydefaultsecretkeydefaultsecretkey}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
 
 logging:
   level:
     root: INFO
-    com.travel.gateway: DEBUG
+    com.travel.gateway: INFO
     org.springframework.cloud.gateway: INFO
 management:
+  server:
+    port: 8090
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
   tracing:
     sampling:
-      probability: 1.0
+      probability: 0.1

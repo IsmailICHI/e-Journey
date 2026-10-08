@@ -1,0 +1,64 @@
+package com.travel.user_service.services.auth;
+
+import com.travel.user_service.dto.login.AuthResponse;
+import com.travel.user_service.dto.login.LoginRequest;
+import com.travel.user_service.dto.register.RegisterRequest;
+import com.travel.user_service.dto.register.RegisterResponse;
+import com.travel.user_service.models.User;
+import com.travel.user_service.repository.UserRepository;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+import org.springframework.dao.DuplicateKeyException;
+// import com.cinema.user.exceptions.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Data
+@AllArgsConstructor
+@Service
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+
+    @Transactional
+    public RegisterResponse register(RegisterRequest request) {
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateKeyException("Email already registered");
+        }
+
+        User user = new User();
+
+        user.setEmail(request.getEmail());
+        user.setFullName(request.getFullName());
+        // user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        userRepository.save(user);
+
+        return new RegisterResponse(
+                user.getEmail());
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse login(LoginRequest request) {
+        System.out.println("[LOGIN REQUEST] ===> " + request.toString());
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+
+        if (!passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword())) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        String token = jwtService.generateToken(user);
+
+        return new AuthResponse(token);
+    }
+}
