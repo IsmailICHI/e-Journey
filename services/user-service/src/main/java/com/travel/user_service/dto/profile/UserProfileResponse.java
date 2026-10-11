@@ -12,5 +12,6 @@ import lombok.NoArgsConstructor;
 public class UserProfileResponse {
     private String fullName;
     private String email;
-    private String memberSince;
+    private String role;
+    private Boolean state;
 }

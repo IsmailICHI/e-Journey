@@ -38,7 +38,7 @@ public class AuthService {
         user.setEmail(request.getEmail());
         user.setFullName(request.getFullName());
         user.setRole(Role.User);
-        // user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setState(true);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         userRepository.save(user);
@@ -52,7 +52,6 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        System.out.println("[LOGIN REQUEST] ===> " + request.toString());
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
 

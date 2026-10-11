@@ -1,15 +1,14 @@
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
-COPY . /workspace
-
-RUN if [ -f /workspace/services/user-service/pom.xml ]; then \
-      cd /workspace/services/user-service && chmod +x mvnw && ./mvnw -q -DskipTests package && cp target/*.jar /workspace/app.jar; \
-    else \
-      chmod +x mvnw && ./mvnw -q -DskipTests package && cp target/*.jar /workspace/app.jar; \
-    fi
+COPY services/user-service/.mvn .mvn
+COPY services/user-service/mvnw services/user-service/pom.xml ./
+COPY services/user-service/src ./src
+RUN chmod +x mvnw && ./mvnw -B -DskipTests package
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /workspace/app.jar /app/app.jar
+RUN addgroup -S app && adduser -S -G app app
+COPY --from=build --chown=app:app /workspace/target/*.jar app.jar
+USER app
 EXPOSE 8081
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

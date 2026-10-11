@@ -2,6 +2,7 @@ package com.travel.user_service;
 
 import com.travel.user_service.models.Role;
 import com.travel.user_service.models.User;
+import com.travel.user_service.repository.UserRepository;
 import com.travel.user_service.services.auth.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 
 
 @SpringBootTest
@@ -27,6 +33,9 @@ class UserServiceApplicationTests {
 	@Autowired
 	private JwtService jwtService;
 
+	@Autowired
+	private UserRepository userRepository;
+
 	private MockMvc mockMvc;
 
 	@BeforeEach
@@ -37,27 +46,81 @@ class UserServiceApplicationTests {
 	}
 
 	@Test
-	void contextLoads() {
+	void authenticatedUserCanReadTheirOwnProfile() throws Exception {
+		mockMvc.perform(get("/api/v1/users/me"))
+				.andExpect(status().isUnauthorized());
+
+		User user = new User();
+		user.setFullName("Profile Test");
+		user.setEmail("profile-" + java.util.UUID.randomUUID() + "@example.test");
+		user.setPassword("not-used-by-this-test");
+		user.setRole(Role.User);
+		user.setState(true);
+		user = userRepository.save(user);
+
+		try {
+			mockMvc.perform(get("/api/v1/users/me")
+					.header("Authorization", "Bearer " + jwtService.generateToken(user)))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.fullName").value("Profile Test"))
+					.andExpect(jsonPath("$.email").value(user.getEmail()))
+					.andExpect(jsonPath("$.role").value("User"))
+					.andExpect(jsonPath("$.state").value(true));
+		} finally {
+			userRepository.deleteById(user.getId());
+		}
 	}
 
 	@Test
-	void adminEndpointRejectsRequestWithoutToken() throws Exception {
+	void adminEndpointEnforcesAuthenticationAndRole() throws Exception {
 		mockMvc.perform(get("/api/v1/admin/users"))
 				.andExpect(status().isUnauthorized());
-	}
-
-	@Test
-	void adminEndpointRejectsUserRoleToken() throws Exception {
 		mockMvc.perform(get("/api/v1/admin/users")
 				.header("Authorization", "Bearer " + tokenFor(Role.User)))
 				.andExpect(status().isForbidden());
-	}
-
-	@Test
-	void adminEndpointAllowsAdminRoleToken() throws Exception {
 		mockMvc.perform(get("/api/v1/admin/users")
 				.header("Authorization", "Bearer " + tokenFor(Role.Admin)))
 				.andExpect(status().isOk());
+	}
+
+	@Test
+	void onlyAdminsCanDeleteUsersAndCannotCreateOrUpdateThem() throws Exception {
+		mockMvc.perform(delete("/api/v1/admin/users/1")
+				.header("Authorization", "Bearer " + tokenFor(Role.User)))
+				.andExpect(status().isForbidden());
+		String adminToken = tokenFor(Role.Admin);
+		mockMvc.perform(delete("/api/v1/admin/users/999999")
+				.header("Authorization", "Bearer " + adminToken))
+				.andExpect(status().isNotFound());
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+				.post("/api/v1/admin/users")
+				.header("Authorization", "Bearer " + adminToken))
+				.andExpect(status().isMethodNotAllowed());
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+				.put("/api/v1/admin/users/1")
+				.header("Authorization", "Bearer " + adminToken))
+				.andExpect(status().isMethodNotAllowed());
+
+		User admin = new User();
+		admin.setFullName("Self Delete " + java.util.UUID.randomUUID());
+		admin.setEmail("self-delete-" + java.util.UUID.randomUUID() + "@example.test");
+		admin.setPassword("not-used-by-this-test");
+		admin.setRole(Role.Admin);
+		admin.setState(true);
+		admin = userRepository.save(admin);
+		try {
+			String selfToken = jwtService.generateToken(admin);
+			mockMvc.perform(get("/api/v1/admin/users")
+					.header("Authorization", "Bearer " + selfToken))
+					.andExpect(status().isOk())
+					.andExpect(content().string(not(containsString(admin.getEmail()))));
+			mockMvc.perform(delete("/api/v1/admin/users/" + admin.getId())
+					.header("Authorization", "Bearer " + selfToken))
+					.andExpect(status().isForbidden());
+			org.assertj.core.api.Assertions.assertThat(userRepository.existsById(admin.getId())).isTrue();
+		} finally {
+			userRepository.deleteById(admin.getId());
+		}
 	}
 
 	private String tokenFor(Role role) {
