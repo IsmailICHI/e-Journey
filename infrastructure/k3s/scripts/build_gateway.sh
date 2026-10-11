@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-IMAGE="${GATEWAY_IMAGE:-e-journey/gateway:dev}"
+IMAGE="${GATEWAY_IMAGE:-travel-plan/gateway:dev}"
 
 docker build \
   --file "$ROOT_DIR/services/gateway/Dockerfile" \
