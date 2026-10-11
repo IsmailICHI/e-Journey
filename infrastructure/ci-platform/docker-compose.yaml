@@ -1,0 +1,74 @@
+name: travelplan-ci
+
+services:
+  sonar-db:
+    image: postgres:16-alpine
+    container_name: travelplan-sonar-db
+    environment:
+      POSTGRES_DB: sonarqube
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:?Set SONAR_DB_PASSWORD in the root .env file}
+    volumes:
+      - sonar-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - ci-platform
+
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: travelplan-sonarqube
+    depends_on:
+      sonar-db:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:?Set SONAR_DB_PASSWORD in the root .env file}
+    ports:
+      - "127.0.0.1:${SONARQUBE_FORWARD_PORT:-9000}:9000"
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+      - sonarqube-logs:/opt/sonarqube/logs
+    restart: unless-stopped
+    networks:
+      ci-platform:
+        aliases:
+          - sonarqube
+
+  jenkins:
+    build:
+      context: .
+      dockerfile: jenkins/Dockerfile
+    image: travelplan/jenkins:local
+    container_name: travelplan-jenkins
+    depends_on:
+      - sonarqube
+    group_add:
+      - "${DOCKER_SOCKET_GID:-0}"
+    ports:
+      - "127.0.0.1:${JENKINS_FORWARD_PORT:-8080}:8080"
+      - "127.0.0.1:${JENKINS_AGENT_FORWARD_PORT:-50000}:50000"
+    volumes:
+      - jenkins-home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - ci-platform
+
+volumes:
+  sonar-db-data:
+  sonarqube-data:
+  sonarqube-extensions:
+  sonarqube-logs:
+  jenkins-home:
+
+networks:
+  ci-platform:
+    name: travelplan-ci
+    driver: bridge
