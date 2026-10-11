@@ -10,7 +10,6 @@ import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,64 +26,56 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    void rejectsProtectedRequestWithoutBearerToken() {
-        MockServerWebExchange exchange = exchange("/api/v1/users/me", null, null);
+    void rejectsMissingInvalidAndNonAdminCredentials() {
+        MockServerWebExchange missingToken = exchange("/api/v1/users/me", null, null);
+        filter.filter(missingToken, ignored -> Mono.empty()).block();
+        assertThat(missingToken.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        filter.filter(exchange, ignored -> Mono.empty()).block();
-
-        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-    }
-
-    @Test
-    void rejectsInvalidBearerToken() {
         jwtService.valid = false;
-        MockServerWebExchange exchange = exchange("/api/v1/users/me", "Bearer invalid", null);
+        MockServerWebExchange invalidToken = exchange("/api/v1/users/me", "Bearer invalid-token", null);
+        filter.filter(invalidToken, ignored -> Mono.empty()).block();
+        assertThat(invalidToken.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        filter.filter(exchange, ignored -> Mono.empty()).block();
-
-        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        jwtService.valid = true;
+        jwtService.role = "USER";
+        MockServerWebExchange nonAdmin = exchange("/api/v1/admin/users", "Bearer test-token", null);
+        filter.filter(nonAdmin, ignored -> Mono.empty()).block();
+        assertThat(nonAdmin.getResponse().getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
-    void rejectsNonAdminFromAdminRoute() {
-        jwtService.roles = Set.of("USER");
-        MockServerWebExchange exchange = exchange("/api/v1/admin/users", "Bearer valid", null);
-
-        filter.filter(exchange, ignored -> Mono.empty()).block();
-
-        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-    }
-
-    @Test
-    void forwardsOnlyVerifiedIdentityHeadersForAdmin() {
+    void forwardsVerifiedIdentityAndPermitsPublicAndCorsPreflightRequests() {
         jwtService.userId = "admin-1";
         jwtService.email = "admin@example.test";
-        jwtService.roles = Set.of("ADMIN");
-        MockServerWebExchange exchange = exchange("/api/v1/admin/users", "Bearer valid", "spoofed");
+        jwtService.role = "ADMIN";
+        MockServerWebExchange adminExchange = exchange("/api/v1/admin/users", "Bearer test-token", "spoofed");
         AtomicReference<ServerWebExchange> forwardedExchange = new AtomicReference<>();
 
-        filter.filter(exchange, forwarded -> {
+        filter.filter(adminExchange, forwarded -> {
             forwardedExchange.set(forwarded);
             return Mono.empty();
         }).block();
 
-        assertThat(exchange.getResponse().getStatusCode()).isNull();
+        assertThat(adminExchange.getResponse().getStatusCode()).isNull();
         assertThat(forwardedExchange.get().getRequest().getHeaders().getFirst("X-User-Id"))
                 .isEqualTo("admin-1");
         assertThat(forwardedExchange.get().getRequest().getHeaders().getFirst("X-User-Email"))
                 .isEqualTo("admin@example.test");
-        assertThat(forwardedExchange.get().getRequest().getHeaders().getFirst("X-User-Roles"))
+        assertThat(forwardedExchange.get().getRequest().getHeaders().getFirst("X-User-Role"))
                 .isEqualTo("ADMIN");
-    }
 
-    @Test
-    void permitsOnlyExpectedPublicMethodAndPath() {
-        MockServerWebExchange exchange = MockServerWebExchange.from(
+        MockServerWebExchange publicRequest = MockServerWebExchange.from(
                 MockServerHttpRequest.post("/api/v1/auth/login").build());
+        filter.filter(publicRequest, ignored -> Mono.empty()).block();
+        assertThat(publicRequest.getResponse().getStatusCode()).isNull();
 
-        filter.filter(exchange, ignored -> Mono.empty()).block();
-
-        assertThat(exchange.getResponse().getStatusCode()).isNull();
+        MockServerWebExchange preflightRequest = MockServerWebExchange.from(
+                MockServerHttpRequest.options("/api/v1/admin/travels")
+                        .header("Origin", "http://127.0.0.1:4200")
+                        .header("Access-Control-Request-Method", "POST")
+                        .build());
+        filter.filter(preflightRequest, ignored -> Mono.empty()).block();
+        assertThat(preflightRequest.getResponse().getStatusCode()).isNull();
     }
 
     private MockServerWebExchange exchange(String path, String authorization, String spoofedUserId) {
@@ -102,7 +93,7 @@ class JwtAuthenticationFilterTest {
         private boolean valid = true;
         private String userId = "user-1";
         private String email = "user@example.test";
-        private Set<String> roles = Set.of();
+        private String role;
 
         StubJwtService() {
             super("0123456789abcdef0123456789abcdef");
@@ -124,21 +115,19 @@ class JwtAuthenticationFilterTest {
         }
 
         @Override
-        public Set<String> extractRoles(String token) {
-            return roles;
+        public String extractRole(String token) {
+            return role;
         }
     }
 
     private static class StubTokenBlacklistService extends TokenBlacklistService {
-        private boolean blacklisted;
-
         StubTokenBlacklistService() {
-            super(null);
+            super(null, true);
         }
 
         @Override
         public Mono<Boolean> isBlacklisted(String token) {
-            return Mono.just(blacklisted);
+            return Mono.just(false);
         }
     }
 }

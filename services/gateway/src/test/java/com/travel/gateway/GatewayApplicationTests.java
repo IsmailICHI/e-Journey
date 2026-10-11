@@ -24,27 +24,19 @@ class GatewayApplicationTests {
 	private Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter;
 
 	@Test
-	void contextLoads() {
-	}
-
-	@Test
-	void convertsUserServiceRoleClaimToSpringRoleAuthority() {
-		Jwt jwt = Jwt.withTokenValue("test-token")
+	void convertsOnlyTheSingleRoleClaimToSpringAuthority() {
+		Jwt adminJwt = Jwt.withTokenValue("admin-token")
 				.header("alg", "HS256")
 				.claim("role", "ADMIN")
 				.build();
-
-		assertThat(authoritiesFor(jwt)).contains("ROLE_ADMIN");
-	}
-
-	@Test
-	void convertsPluralRoleClaimsToSpringRoleAuthorities() {
-		Jwt jwt = Jwt.withTokenValue("test-token")
+		Jwt userJwt = Jwt.withTokenValue("user-token")
 				.header("alg", "HS256")
-				.claim("roles", List.of("USER", "ROLE_ADMIN"))
+				.claim("role", "USER")
+				.claim("roles", List.of("ADMIN"))
 				.build();
 
-		assertThat(authoritiesFor(jwt)).contains("ROLE_USER", "ROLE_ADMIN");
+		assertThat(authoritiesFor(adminJwt)).containsExactly("ROLE_ADMIN");
+		assertThat(authoritiesFor(userJwt)).containsExactly("ROLE_USER");
 	}
 
 	private List<String> authoritiesFor(Jwt jwt) {

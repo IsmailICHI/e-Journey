@@ -8,10 +8,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.Locale;
-import java.util.Set;
 
 @Service
 public class JwtService {
@@ -50,24 +47,9 @@ public class JwtService {
         return getClaims(token).getSubject();
     }
 
-    public Set<String> extractRoles(String token) {
-        Claims claims = getClaims(token);
-        Object roleClaim = claims.get("roles");
-        if (roleClaim == null) {
-            roleClaim = claims.get("role");
-        }
-
-        Set<String> roles = new LinkedHashSet<>();
-        if (roleClaim instanceof Collection<?> values) {
-            values.stream()
-                    .filter(String.class::isInstance)
-                    .map(String.class::cast)
-                    .map(this::normalizeRole)
-                    .forEach(roles::add);
-        } else if (roleClaim instanceof String role) {
-            roles.add(normalizeRole(role));
-        }
-        return Set.copyOf(roles);
+    public String extractRole(String token) {
+        Object roleClaim = getClaims(token).get("role");
+        return roleClaim instanceof String role ? normalizeRole(role) : null;
     }
 
     private String normalizeRole(String role) {

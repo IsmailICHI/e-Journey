@@ -17,9 +17,6 @@ import com.travel.gateway.service.TokenBlacklistService;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Set;
-
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
@@ -43,7 +40,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         System.out.println("[---- JwtAuthenticationFilter: Incoming request URI:] " + request.getURI().toString());
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
-        if (isPublicEndpoint(request.getMethod(), path)) {
+        if (HttpMethod.OPTIONS.equals(request.getMethod()) || isPublicEndpoint(request.getMethod(), path)) {
             return chain.filter(exchange);
         }
 
@@ -73,8 +70,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                         return reject(exchange, HttpStatus.UNAUTHORIZED, "Bearer token has no user identity");
                     }
 
-                    Set<String> roles = jwtService.extractRoles(token);
-                    if (isAdminEndpoint(path) && !roles.contains("ADMIN")) {
+                    String role = jwtService.extractRole(token);
+                    if (isAdminEndpoint(path) && !"ADMIN".equals(role)) {
                         return reject(exchange, HttpStatus.FORBIDDEN, "Administrator role required");
                     }
 
@@ -82,13 +79,13 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                             .headers(headers -> {
                                 headers.remove("X-User-Id");
                                 headers.remove("X-User-Email");
-                                headers.remove("X-User-Roles");
+                                headers.remove("X-User-Role");
                                 headers.set("X-User-Id", userId);
                                 if (email != null && !email.isBlank()) {
                                     headers.set("X-User-Email", email);
                                 }
-                                if (!roles.isEmpty()) {
-                                    headers.set("X-User-Roles", String.join(",", roles));
+                                if (role != null && !role.isBlank()) {
+                                    headers.set("X-User-Role", role);
                                 }
                             })
                             .build();

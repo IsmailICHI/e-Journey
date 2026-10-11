@@ -17,22 +17,22 @@ spring:
         response-timeout: 5s
       routes:
         - id: user-service
-          uri: ${USER_SERVICE_URL:http://user-service:8081}
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/v1/users/**, /api/v1/auth/**, /api/v1/admin/users, /api/v1/admin/users/**
 
         - id: travel-service
-          uri: ${TRAVEL_SERVICE_URL:http://travel-service:8082}
+          uri: ${TRAVEL_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/v1/travels/**, /api/v1/places/public, /api/v1/admin/travels, /api/v1/admin/travels/**
 
         - id: payment-service
-          uri: ${PAYMENT_SERVICE_URL:http://payment-service:8083}
+          uri: ${PAYMENT_SERVICE_URL:http://localhost:8083}
           predicates:
             - Path=/api/v1/payments/**, /api/v1/admin/payments, /api/v1/admin/payments/**
 
         - id: recommendation-service
-          uri: ${RECOMMENDATION_SERVICE_URL:http://recommendation-service:8084}
+          uri: ${RECOMMENDATION_SERVICE_URL:http://localhost:8084}
           predicates:
             - Path=/api/v1/recommendations/**
 
@@ -41,7 +41,7 @@ jwt:
 
 app:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200,http://localhost:4201,http://127.0.0.1:4201}
 
 logging:
   level:
