@@ -22,7 +22,6 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public RegisterResponse register(
             @Valid @RequestBody RegisterRequest request) {
-        System.out.println("[REQUEST IN REGISTER] : " + request.toString());
         return authService.register(request);
     }
 
