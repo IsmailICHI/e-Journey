@@ -27,6 +27,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.http.HttpMethod;
+import org.springframework.web.cors.reactive.CorsConfigurationSource;
 
 import reactor.core.publisher.Mono;
 
@@ -37,13 +38,16 @@ public class SecurityConfig {
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(
             ServerHttpSecurity http,
-            Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter) {
+            Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter,
+            CorsConfigurationSource corsConfigurationSource) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/places/public").permitAll()
                         .pathMatchers("/api/v1/admin", "/api/v1/admin/**").hasRole("ADMIN")
@@ -78,20 +82,11 @@ public class SecurityConfig {
             if (scopeAuthorities != null) {
                 authorities.addAll(scopeAuthorities);
             }
-            addRoleAuthorities(jwt.getClaims().get("roles"), authorities);
-            addRoleAuthorities(jwt.getClaims().get("role"), authorities);
+            addRoleAuthority(jwt.getClaims().get("role"), authorities);
             return authorities;
         });
 
         return new ReactiveJwtAuthenticationConverterAdapter(jwtAuthenticationConverter);
-    }
-
-    private static void addRoleAuthorities(Object roleClaim, Collection<GrantedAuthority> authorities) {
-        if (roleClaim instanceof Collection<?> roleValues) {
-            roleValues.forEach(roleValue -> addRoleAuthority(roleValue, authorities));
-        } else {
-            addRoleAuthority(roleClaim, authorities);
-        }
     }
 
     private static void addRoleAuthority(Object roleValue, Collection<GrantedAuthority> authorities) {
