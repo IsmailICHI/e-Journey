@@ -1,49 +1,165 @@
+name: travelplan
+
 services:
   postgres:
-    image: postgres:15-alpine
-    container_name: neo4flix-postgres
+    image: postgres:16-alpine
+    container_name: travelplan-postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_FORWARD_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/docker/init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql:ro
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./infrastructure/docker/postgres/init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql:ro
+    restart: unless-stopped
     networks:
-      - neo4flix-net
+      - travelplan
 
   redis:
     image: redis:7-alpine
-    container_name: movie_redis
+    container_name: travelplan-redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command: ["sh", "-c", "if [ -n \"$${REDIS_PASSWORD}\" ]; then exec redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\"; else exec redis-server --appendonly yes; fi"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${REDIS_FORWARD_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD-SHELL", "if [ -n \"$${REDIS_PASSWORD}\" ]; then redis-cli --no-auth-warning -a \"$${REDIS_PASSWORD}\" ping; else redis-cli ping; fi | grep -q PONG"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 12
+    restart: unless-stopped
     networks:
-      - neo4flix-net
+      - travelplan
 
   neo4j:
     image: neo4j:5.15-community
-    container_name: neo4flix-neo4j
+    container_name: travelplan-neo4j
     environment:
-      NEO4J_AUTH: ${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-travelplan-local}
     ports:
-      - "7474:7474" # Browser UI
-      - "7687:7687" # Bolt Protocol
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    volumes:
+      - neo4j-data:/data
     healthcheck:
-      test: [ "CMD-SHELL", "cypher-shell -u '${NEO4J_USERNAME}' -p '${NEO4J_PASSWORD}' 'RETURN 1' >/dev/null 2>&1" ]
+      test: ["CMD-SHELL", "cypher-shell -u \"$${NEO4J_AUTH%/*}\" -p \"$${NEO4J_AUTH#*/}\" 'RETURN 1' >/dev/null 2>&1"]
       interval: 10s
       timeout: 10s
       retries: 12
+    restart: unless-stopped
     networks:
-      - neo4flix-net
+      - travelplan
+
+  user-service:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    image: travelplan/user-service:local
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/user_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${USER_SERVICE_FORWARD_PORT:-8081}:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8081/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - travelplan
+
+  travel-service:
+    build:
+      context: .
+      dockerfile: services/travel-service/DockerFile
+    image: travelplan/travel-service:local
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/travel_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${TRAVEL_SERVICE_FORWARD_PORT:-8082}:8082"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8082/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - travelplan
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    image: travelplan/gateway:local
+    environment:
+      SERVER_PORT: 8089
+      MANAGEMENT_SERVER_PORT: 8090
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      USER_SERVICE_URL: http://user-service:8081
+      TRAVEL_SERVICE_URL: http://travel-service:8082
+      PAYMENT_SERVICE_URL: ${PAYMENT_SERVICE_URL:-http://localhost:8083}
+      RECOMMENDATION_SERVICE_URL: ${RECOMMENDATION_SERVICE_URL:-http://localhost:8084}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200,http://localhost:4201,http://127.0.0.1:4201}
+    depends_on:
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      travel-service:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${GATEWAY_FORWARD_PORT:-8089}:8089"
+      - "127.0.0.1:${GATEWAY_MANAGEMENT_FORWARD_PORT:-8090}:8090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8090/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - travelplan
+
+volumes:
+  postgres-data:
+  redis-data:
+  neo4j-data:
+
+networks:
+  travelplan:
+    driver: bridge
