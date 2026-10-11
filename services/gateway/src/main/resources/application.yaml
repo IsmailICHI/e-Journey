@@ -37,7 +37,7 @@ spring:
             - Path=/api/v1/recommendations/**
 
 jwt:
-  secret: ${JWT_SECRET:defaultsecretkeydefaultsecretkeydefaultsecretkey}
+  secret: ${JWT_SECRET}
 
 app:
   cors:

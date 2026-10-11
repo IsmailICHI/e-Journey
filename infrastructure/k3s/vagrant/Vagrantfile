@@ -5,8 +5,8 @@ Vagrant.configure("2") do |config|
   # =========================
   # K3S MASTER NODE
   # =========================
-  config.vm.define "k3-master" do |master|
-    master.vm.hostname = "k3-master"
+  config.vm.define "k8-master" do |master|
+    master.vm.hostname = "k8-master"
 
     # Private cluster network
     master.vm.network "private_network", ip: "192.168.56.10"
@@ -19,7 +19,7 @@ Vagrant.configure("2") do |config|
       vb.cpus = 2
     end
 
-    master.vm.provision "shell", path: "scripts/provisions/k3-master.sh"
+    master.vm.provision "shell", path: "scripts/provisions/k8-master.sh"
   end
 
   # =========================
@@ -37,7 +37,7 @@ Vagrant.configure("2") do |config|
     end
 
     worker.vm.provision "shell",
-      path: "scripts/provisions/k3-worker.sh"
+      path: "scripts/provisions/k8-worker.sh"
   end
 end
 
@@ -48,7 +48,7 @@ end
 #     config.vm.synced_folder ".", "/vagrant", create: true
 
 #     # k3s master node
-#     config.vm.define "k3-master" do |master|
+#     config.vm.define "k8-master" do |master|
 #         master.vm.hostname = "k3-master"
 #         master.vm.network "private_network", ip: "192.168.56.10"
 #         master.vm.network "forwarded_port", guest: 6443, host: 6443

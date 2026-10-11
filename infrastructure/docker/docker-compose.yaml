@@ -80,6 +80,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      user-service:
+        condition: service_healthy
       travel-service:
         condition: service_started
     ports:

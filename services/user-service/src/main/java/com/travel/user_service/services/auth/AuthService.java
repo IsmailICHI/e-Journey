@@ -4,6 +4,7 @@ import com.travel.user_service.dto.login.AuthResponse;
 import com.travel.user_service.dto.login.LoginRequest;
 import com.travel.user_service.dto.register.RegisterRequest;
 import com.travel.user_service.dto.register.RegisterResponse;
+import com.travel.user_service.models.Role;
 import com.travel.user_service.models.User;
 import com.travel.user_service.repository.UserRepository;
 
@@ -36,13 +37,17 @@ public class AuthService {
 
         user.setEmail(request.getEmail());
         user.setFullName(request.getFullName());
+        user.setRole(Role.User);
         // user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         userRepository.save(user);
+        RegisterResponse res = new RegisterResponse();
+        res.setEmail(user.getEmail());
+        res.setFullName(user.getFullName());
+        res.setRole(user.getRole().name());
 
-        return new RegisterResponse(
-                user.getEmail());
+        return res;
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +63,10 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(user);
-
-        return new AuthResponse(token);
+        AuthResponse res = new AuthResponse();
+        res.setToken(token);
+        res.setState(user.getState());
+        res.setRole(user.getRole().name());
+        return res;
     }
 }
