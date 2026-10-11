@@ -2,22 +2,32 @@ package com.travel.travel_service.services;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.ArrayList;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.travel.travel_service.dto.ItineraryResponse;
+import com.travel.travel_service.dto.ItineraryRequest;
+import com.travel.travel_service.dto.TravelPageResponse;
+import com.travel.travel_service.dto.TravelRequest;
 import com.travel.travel_service.dto.TravelResponse;
+import com.travel.travel_service.model.ItineraryEntity;
 import com.travel.travel_service.model.TravelEntity;
 import com.travel.travel_service.repository.TravelRepository;
 import org.springframework.transaction.annotation.Transactional;
 
-import lombok.Data;
-
 @Service
-@Data
 public class TravelService {
+        private static final int ADMIN_PAGE_SIZE = 5;
 
         private final TravelRepository travelRepository;
+
+        public TravelService(TravelRepository travelRepository) {
+                this.travelRepository = travelRepository;
+        }
 
         @Transactional(readOnly = true)
         public Optional<TravelResponse> getTravel(Long id) {
@@ -31,6 +41,22 @@ public class TravelService {
                                 .stream()
                                 .map(this::toResponse)
                                 .toList();
+        }
+
+        @Transactional(readOnly = true)
+        public TravelPageResponse getTravelPage(int page) {
+                Page<TravelEntity> travels = travelRepository.findAllByOrderByTravelIdAsc(
+                                PageRequest.of(Math.max(0, page), ADMIN_PAGE_SIZE, Sort.unsorted()));
+                List<TravelResponse> content = travels.getContent().stream()
+                                .map(this::toResponse)
+                                .toList();
+                return new TravelPageResponse(
+                                content,
+                                travels.getNumber(),
+                                travels.getSize(),
+                                travels.getTotalElements(),
+                                travels.getTotalPages(),
+                                travels.isLast());
         }
 
         private TravelResponse toResponse(TravelEntity travel) {
@@ -52,6 +78,79 @@ public class TravelService {
                                 travel.getDescription(),
                                 travel.getImageUrl(),
                                 travel.getDuration(),
+                                List.copyOf(travel.getDestinations()),
+                                travel.getStartDate(),
+                                travel.getEndDate(),
+                                travel.getAccommodation(),
+                                travel.getTransportation(),
+                                travel.getPaymentMethod(),
                                 itinerary);
+        }
+
+        @Transactional
+        public TravelResponse createTravel(TravelRequest request) {
+                TravelEntity travel = new TravelEntity();
+                applyRequest(travel, request);
+                return toResponse(travelRepository.save(travel));
+        }
+
+        @Transactional
+        public Optional<TravelResponse> updateTravel(Long id, TravelRequest request) {
+                return travelRepository.findById(id).map(travel -> {
+                        applyRequest(travel, request);
+                        return toResponse(travelRepository.save(travel));
+                });
+        }
+
+        @Transactional
+        public boolean deleteTravel(Long id) {
+                if (!travelRepository.existsById(id)) {
+                        return false;
+                }
+                travelRepository.deleteById(id);
+                return true;
+        }
+
+        private void applyRequest(TravelEntity travel, TravelRequest request) {
+                if (request.startDate() != null && request.endDate() != null
+                                && request.endDate().isBefore(request.startDate())) {
+                        throw new IllegalArgumentException("End date must be on or after the start date");
+                }
+
+                travel.setTitle(request.title());
+                travel.setCity(request.city());
+                travel.setCountry(request.country());
+                travel.setDescription(request.description());
+                travel.setImageUrl(request.imageUrl());
+                travel.setDuration(request.duration());
+                travel.setDestinations(request.destinations() == null
+                                ? new ArrayList<>()
+                                : new ArrayList<>(request.destinations()));
+                travel.setStartDate(request.startDate());
+                travel.setEndDate(request.endDate());
+                travel.setAccommodation(request.accommodation());
+                travel.setTransportation(request.transportation());
+                travel.setPaymentMethod(request.paymentMethod());
+                travel.getItinerary().clear();
+
+                if (request.itinerary() != null) {
+                        request.itinerary().stream()
+                                        .map(this::toEntity)
+                                        .forEach(item -> {
+                                                item.setTravel(travel);
+                                                travel.getItinerary().add(item);
+                                        });
+                }
+        }
+
+        private ItineraryEntity toEntity(ItineraryRequest request) {
+                return ItineraryEntity.builder()
+                                .dayNumber(request.dayNumber())
+                                .title(request.title())
+                                .description(request.description())
+                                .activities(request.activities() == null
+                                                ? new ArrayList<>()
+                                                : new ArrayList<>(request.activities()))
+                                .build();
         }
 }
