@@ -1,0 +1,63 @@
+<main class="min-h-screen bg-[#080706] px-4 pb-12 pt-24 text-stone-100 sm:px-6 sm:pt-28 lg:px-8">
+  <app-navbar activePage="profile" />
+
+  <div class="mx-auto max-w-5xl">
+    <section class="relative overflow-hidden border border-white/10 bg-gradient-to-br from-white/[0.07] via-white/[0.025] to-amber-100/[0.04] p-5 sm:p-8 lg:p-10">
+      <div class="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-amber-100/[0.06] blur-3xl"></div>
+      <p class="text-[10px] tracking-[0.24em] text-amber-100">TRAVELPLAN ACCOUNT</p>
+      <div class="mt-5 flex flex-col gap-5 sm:flex-row sm:items-center">
+        <div class="flex h-16 w-16 shrink-0 items-center justify-center border border-amber-100/30 bg-black/50 p-2">
+          <img src="/travelplan-logo.svg" alt="TRAVELPLAN" class="h-full w-full object-contain" />
+        </div>
+        <div class="min-w-0">
+          <h1 class="font-sans-clean text-3xl font-light sm:text-4xl">{{ isAdmin ? 'Administrator profile' : 'Your profile' }}</h1>
+          <p *ngIf="loadingProfile" class="mt-2 text-sm text-stone-400">Loading your account details…</p>
+          <p *ngIf="!loadingProfile" class="mt-2 break-all text-sm text-stone-400">{{ profile?.fullName }} · {{ profile?.email || email }}</p>
+          <p *ngIf="profileErrorMessage" role="alert" class="mt-3 text-xs text-red-200">{{ profileErrorMessage }}</p>
+        </div>
+      </div>
+      <div class="mt-7 grid gap-3 sm:grid-cols-2">
+        <div class="border border-white/10 bg-black/30 px-4 py-3">
+          <p class="text-[9px] tracking-[0.16em] text-stone-500">ACCOUNT TYPE</p>
+          <p class="mt-1 text-sm text-stone-100">{{ profile?.role || role || 'User' }}</p>
+        </div>
+        <div class="border border-white/10 bg-black/30 px-4 py-3">
+          <p class="text-[9px] tracking-[0.16em] text-stone-500">SESSION</p>
+          <p class="mt-1 text-sm" [class.text-emerald-200]="profile?.state === true" [class.text-stone-300]="profile?.state !== true">{{ loadingProfile ? 'Loading…' : profile?.state ? 'Active' : 'Inactive' }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section *ngIf="isAdmin" class="mt-8">
+      <div class="mb-4">
+        <p class="text-[10px] tracking-[0.2em] text-rose-100">ADMIN OVERVIEW</p>
+        <h2 class="mt-2 font-sans-clean text-2xl font-light">Platform statistics</h2>
+      </div>
+      <p *ngIf="loadingStatistics" class="border border-white/10 px-4 py-5 text-sm text-stone-400">Loading account statistics…</p>
+      <p *ngIf="statisticsErrorMessage" role="alert" class="border border-red-300/25 bg-red-950/30 px-4 py-3 text-sm text-red-200">{{ statisticsErrorMessage }}</p>
+      <div *ngIf="!loadingStatistics && !statisticsErrorMessage" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <article class="border border-white/10 bg-white/[0.025] p-5 sm:p-6">
+          <p class="text-[10px] tracking-[0.14em] text-stone-500">REGISTERED USERS</p>
+          <p class="mt-3 font-sans-clean text-4xl font-light text-amber-100">{{ userCount }}</p>
+          <p class="mt-2 text-xs text-stone-400">{{ activeUserCount }} active accounts</p>
+        </article>
+        <article class="border border-white/10 bg-white/[0.025] p-5 sm:p-6">
+          <p class="text-[10px] tracking-[0.14em] text-stone-500">TRAVEL ENTRIES</p>
+          <p class="mt-3 font-sans-clean text-4xl font-light text-rose-100">{{ travelCount }}</p>
+          <p class="mt-2 text-xs text-stone-400">Available in the travel catalogue</p>
+        </article>
+        <article class="border border-white/10 bg-white/[0.025] p-5 sm:col-span-2 sm:p-6 lg:col-span-1">
+          <p class="text-[10px] tracking-[0.14em] text-stone-500">ADMIN ACCESS</p>
+          <p class="mt-3 font-sans-clean text-2xl font-light">Active</p>
+          <p class="mt-2 text-xs text-stone-400">Manage the platform from your dashboard.</p>
+        </article>
+      </div>
+    </section>
+
+    <section *ngIf="!isAdmin" class="mt-8 border border-white/10 bg-white/[0.025] p-5 sm:p-7">
+      <p class="text-[10px] tracking-[0.2em] text-rose-100">ACCOUNT DETAILS</p>
+      <h2 class="mt-2 font-sans-clean text-xl font-light">Welcome to TRAVELPLAN</h2>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-stone-400">Your account is ready. Browse the home page for destination inspiration or sign out whenever you’re finished.</p>
+    </section>
+  </div>
+</main>

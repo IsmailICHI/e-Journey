@@ -1,0 +1,39 @@
+<header class="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-black/90 px-4 py-3 backdrop-blur-2xl sm:px-6 sm:py-4">
+  <div class="mx-auto flex max-w-7xl items-center justify-between gap-3">
+    <a routerLink="/home" (click)="closeMenu()" aria-label="TRAVELPLAN home" class="flex min-w-0 items-center gap-2.5 text-white sm:gap-3">
+      <img src="/travelplan-logo.svg" alt="" class="h-9 w-9 shrink-0 sm:h-10 sm:w-10" />
+      <span class="min-w-0">
+        <span class="font-travel block truncate text-xs font-bold tracking-[0.2em] sm:text-sm sm:tracking-[0.24em]">TRAVELPLAN</span>
+        <span class="mt-1 hidden text-[9px] tracking-[0.08em] text-stone-500 sm:block">Travel management</span>
+      </span>
+    </a>
+
+    <nav class="hidden shrink-0 items-center gap-4 md:flex lg:gap-7" aria-label="Main navigation">
+      <span *ngIf="activePage === 'admin'" class="text-[9px] tracking-[0.14em] text-rose-100">ADMIN DASHBOARD</span>
+      <span *ngIf="isAdmin && activePage === 'home'" class="hidden text-[9px] tracking-[0.12em] text-stone-500 lg:block">ADMIN ACCOUNT</span>
+      <a *ngIf="isLoggedIn" routerLink="/home" (click)="closeMenu()" class="text-xs text-stone-300 transition-colors hover:text-white">Home</a>
+      <a *ngIf="isLoggedIn && activePage !== 'profile'" routerLink="/profile" (click)="closeMenu()" class="text-xs text-stone-300 transition-colors hover:text-white">Profile</a>
+      <a *ngIf="isLoggedIn && activePage === 'profile'" routerLink="/profile" aria-current="page" (click)="closeMenu()" class="text-xs text-amber-100">Profile</a>
+      <a *ngIf="isAdmin && activePage !== 'admin'" routerLink="/admin" (click)="closeMenu()" class="text-xs text-stone-300 transition-colors hover:text-white">Admin dashboard</a>
+      <a *ngIf="!isLoggedIn && activePage !== 'login'" routerLink="/login" (click)="closeMenu()" class="border border-amber-200/50 px-4 py-2 text-[10px] tracking-[0.12em] text-amber-100 transition-colors hover:bg-amber-100 hover:text-black sm:px-5 sm:text-xs">SIGN IN</a>
+      <a *ngIf="!isLoggedIn && activePage === 'login'" routerLink="/login" (click)="closeMenu()" class="border border-amber-200/50 px-4 py-2 text-[10px] tracking-[0.12em] text-amber-100 transition-colors hover:bg-amber-100 hover:text-black sm:px-5 sm:text-xs">SIGN IN</a>
+      <button *ngIf="isLoggedIn" type="button" (click)="logout()" class="border border-white/15 px-4 py-2 text-[10px] tracking-[0.12em] text-stone-300 transition-colors hover:border-amber-200/50 hover:text-white sm:px-5 sm:text-xs">SIGN OUT</button>
+    </nav>
+
+    <a *ngIf="!isLoggedIn" routerLink="/login" (click)="closeMenu()" class="shrink-0 border border-amber-200/50 px-4 py-2 text-[10px] tracking-[0.12em] text-amber-100 md:hidden">SIGN IN</a>
+    <button *ngIf="isLoggedIn" type="button" (click)="toggleMenu()" [attr.aria-expanded]="menuOpen" aria-controls="mobile-navigation" [attr.aria-label]="menuOpen ? 'Close navigation menu' : 'Open navigation menu'" class="flex h-10 w-10 shrink-0 flex-col items-center justify-center gap-1.5 border border-white/15 text-stone-200 transition hover:border-amber-200/50 md:hidden">
+      <span class="h-px w-4 bg-current"></span>
+      <span class="h-px w-4 bg-current"></span>
+      <span class="h-px w-4 bg-current"></span>
+    </button>
+  </div>
+
+  <nav *ngIf="menuOpen" id="mobile-navigation" class="mx-auto mt-3 grid max-w-7xl gap-1 border-t border-white/10 pt-3 md:hidden" aria-label="Mobile navigation">
+    <a *ngIf="isLoggedIn" routerLink="/home" (click)="closeMenu()" class="px-3 py-3 text-sm text-stone-300 transition-colors hover:bg-white/5 hover:text-white">Home</a>
+    <a *ngIf="isLoggedIn" routerLink="/profile" (click)="closeMenu()" class="px-3 py-3 text-sm text-stone-300 transition-colors hover:bg-white/5 hover:text-white">Profile</a>
+    <a *ngIf="isAdmin && activePage !== 'admin'" routerLink="/admin" (click)="closeMenu()" class="px-3 py-3 text-sm text-stone-300 transition-colors hover:bg-white/5 hover:text-white">Admin dashboard</a>
+    <a *ngIf="!isLoggedIn && activePage !== 'login'" routerLink="/login" (click)="closeMenu()" class="px-3 py-3 text-sm text-amber-100 transition-colors hover:bg-white/5">Sign in</a>
+    <a *ngIf="!isLoggedIn && activePage === 'login'" routerLink="/login" (click)="closeMenu()" class="px-3 py-3 text-sm text-amber-100 transition-colors hover:bg-white/5">Sign in</a>
+    <button *ngIf="isLoggedIn" type="button" (click)="logout()" class="px-3 py-3 text-left text-sm text-amber-100 transition-colors hover:bg-white/5">Sign out</button>
+  </nav>
+</header>

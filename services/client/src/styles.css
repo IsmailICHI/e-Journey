@@ -1,0 +1,87 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+html,
+body {
+  min-height: 100%;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  font-feature-settings: 'kern';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+* {
+  scrollbar-color: #292522 #050505;
+  scrollbar-width: thin;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+::-webkit-scrollbar-thumb {
+  border: 2px solid #050505;
+  border-radius: 999px;
+  background: #292522;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #51443d;
+}
+.font-serif-luxury {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+.font-sans-clean {
+  font-family: 'Manrope', sans-serif;
+}
+.font-travel {
+  font-family: 'Manrope', sans-serif;
+}
+.auth-scroll-region {
+  scrollbar-width: none;
+}
+.auth-scroll-region::-webkit-scrollbar {
+  display: none;
+}
+.bg-radial-vignette {
+  background: radial-gradient(circle at center, transparent 0%, rgba(5, 7, 20, 0.8) 100%);
+}
+.font-bistro-script {
+  font-family: 'Style Script', cursive;
+}
+
+.font-bistro-italic {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+}
+.admin-input {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  border: 1px solid rgb(255 255 255 / 15%);
+  background: rgb(255 255 255 / 4%);
+  border-radius: 0.375rem;
+  padding: 0.8rem 0.9rem;
+  color: white;
+  outline: none;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.admin-input:focus {
+  border-color: rgb(255 228 230 / 70%);
+  background: rgb(255 255 255 / 6%);
+  box-shadow: 0 0 0 3px rgb(255 228 230 / 8%);
+}
+.admin-input::placeholder {
+  color: rgb(168 162 158 / 55%);
+}
