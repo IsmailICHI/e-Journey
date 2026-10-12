@@ -2,6 +2,7 @@ import { Component, Input, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { FeedbackService } from '../../core/services/feedback.service';
 
 @Component({
   selector: 'app-navbar',
@@ -13,6 +14,7 @@ export class NavbarComponent implements OnInit {
   @Input() activePage: 'home' | 'admin' | 'profile' | 'login' | 'register' = 'home';
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  readonly feedback = inject(FeedbackService);
   menuOpen = false;
 
   ngOnInit(): void {
@@ -43,5 +45,10 @@ export class NavbarComponent implements OnInit {
     this.authService.logout();
     this.closeMenu();
     void this.router.navigateByUrl('/home');
+  }
+
+  openFeedbackLog(): void {
+    this.closeMenu();
+    this.feedback.openLog();
   }
 }

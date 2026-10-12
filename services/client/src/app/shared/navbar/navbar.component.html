@@ -16,7 +16,10 @@
       <a *ngIf="isLoggedIn && activePage === 'profile'" routerLink="/profile" aria-current="page" (click)="closeMenu()" class="text-xs text-amber-100">Profile</a>
       <a *ngIf="isAdmin && activePage !== 'admin'" routerLink="/admin" (click)="closeMenu()" class="text-xs text-stone-300 transition-colors hover:text-white">Admin dashboard</a>
       <a *ngIf="!isLoggedIn && activePage !== 'login'" routerLink="/login" (click)="closeMenu()" class="border border-amber-200/50 px-4 py-2 text-[10px] tracking-[0.12em] text-amber-100 transition-colors hover:bg-amber-100 hover:text-black sm:px-5 sm:text-xs">SIGN IN</a>
-      <a *ngIf="!isLoggedIn && activePage === 'login'" routerLink="/login" (click)="closeMenu()" class="border border-amber-200/50 px-4 py-2 text-[10px] tracking-[0.12em] text-amber-100 transition-colors hover:bg-amber-100 hover:text-black sm:px-5 sm:text-xs">SIGN IN</a>
+      <button type="button" (click)="openFeedbackLog()" class="flex items-center gap-1.5 border border-white/15 px-3 py-1.5 text-[10px] tracking-[0.1em] text-stone-300 transition-colors hover:border-rose-100/50 hover:text-white" title="Open Feedback & Activity Log">
+        <span class="h-1.5 w-1.5 rounded-full bg-rose-200"></span>
+        <span>LOG</span>
+      </button>
       <button *ngIf="isLoggedIn" type="button" (click)="logout()" class="border border-white/15 px-4 py-2 text-[10px] tracking-[0.12em] text-stone-300 transition-colors hover:border-amber-200/50 hover:text-white sm:px-5 sm:text-xs">SIGN OUT</button>
     </nav>
 
@@ -34,6 +37,7 @@
     <a *ngIf="isAdmin && activePage !== 'admin'" routerLink="/admin" (click)="closeMenu()" class="px-3 py-3 text-sm text-stone-300 transition-colors hover:bg-white/5 hover:text-white">Admin dashboard</a>
     <a *ngIf="!isLoggedIn && activePage !== 'login'" routerLink="/login" (click)="closeMenu()" class="px-3 py-3 text-sm text-amber-100 transition-colors hover:bg-white/5">Sign in</a>
     <a *ngIf="!isLoggedIn && activePage === 'login'" routerLink="/login" (click)="closeMenu()" class="px-3 py-3 text-sm text-amber-100 transition-colors hover:bg-white/5">Sign in</a>
+    <button type="button" (click)="openFeedbackLog()" class="px-3 py-3 text-left text-sm text-stone-300 transition-colors hover:bg-white/5 hover:text-white">Activity Log</button>
     <button *ngIf="isLoggedIn" type="button" (click)="logout()" class="px-3 py-3 text-left text-sm text-amber-100 transition-colors hover:bg-white/5">Sign out</button>
   </nav>
 </header>
