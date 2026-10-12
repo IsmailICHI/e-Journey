@@ -42,14 +42,18 @@ public record TravelRequest(
         @Size(max = 10, message = "Cannot list more than 10 destinations")
         List<@NotBlank(message = "Destination cannot be blank") @Size(max = 30, message = "Destination name cannot exceed 30 characters") String> destinations,
 
+        @NotNull (message = "Start date is required")
         LocalDate startDate,
 
+        @NotNull (message = "End date is required")
         LocalDate endDate,
 
+        @NotBlank (message = "accommodation is required")
         @Size(max = 30, message = "Accommodation cannot exceed 30 characters")
         @Pattern (regexp = "^[A-Za-z0-9\\s.,'-]*$", message = "Accommodation can only contain letters, numbers, spaces, and basic punctuation")
         String accommodation,
 
+        @NotBlank (message = "transportation is required")
         @Size(max = 20, message = "Transportation cannot exceed 20 characters")
         @Pattern (regexp = "^[A-Za-z0-9\\s.,'-]*$", message = "Transportation can only contain letters, numbers, spaces, and basic punctuation")
         String transportation,
