@@ -7,6 +7,7 @@ import { getApiErrorMessage } from '../../core/interceptors/api-error';
 import { ItineraryRequest, TravelRequest, TravelResponse } from '../../core/models/travel.model';
 import { UserResponse } from '../../core/models/user.model';
 import { AuthService } from '../../core/services/auth.service';
+import { FeedbackService } from '../../core/services/feedback.service';
 import { TravelService } from '../../core/services/travel.service';
 import { UserService } from '../../core/services/user.service';
 
@@ -58,6 +59,7 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly userService = inject(UserService);
   private readonly travelService = inject(TravelService);
   private readonly authService = inject(AuthService);
+  readonly feedback = inject(FeedbackService);
   private readonly ngZone = inject(NgZone);
   private sentinelObserver: IntersectionObserver | null = null;
   private sentinel: ElementRef<HTMLDivElement> | undefined;
@@ -241,7 +243,12 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
         this.travels = this.editingTravelId === null
           ? [...this.travels, savedTravel]
           : this.travels.map((travel) => travel.travelId === savedTravel.travelId ? savedTravel : travel);
-        this.successMessage = this.editingTravelId === null ? 'Travel created.' : 'Travel updated.';
+        const actionTitle = this.editingTravelId === null ? 'Travel Created' : 'Travel Updated';
+        const actionMessage = this.editingTravelId === null
+          ? `"${savedTravel.title}" was successfully created.`
+          : `"${savedTravel.title}" was successfully updated.`;
+        this.successMessage = actionMessage;
+        this.feedback.showSuccess(actionMessage, actionTitle);
         this.editingTravelId = null;
         this.isTravelEditorOpen = false;
         this.travelForm = emptyTravelForm();
@@ -249,6 +256,7 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
       },
       error: (error: unknown) => {
         this.errorMessage = getApiErrorMessage(error);
+        this.feedback.showFromApiError(error, this.editingTravelId === null ? 'Create Travel Failed' : 'Update Travel Failed');
         this.savingTravel = false;
       }
     });
@@ -302,17 +310,20 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
             this.cancelTravelEdit();
           }
           this.successMessage = 'Travel deleted.';
+          this.feedback.showSuccess(`Travel "${confirmation.name}" was permanently deleted.`, 'Travel Deleted');
         } else {
           this.users = this.users.filter((item) => item.id !== confirmation.id);
           this.userPage = Math.floor(this.users.length / 5);
           this.hasMoreUsers = true;
           this.successMessage = 'User deleted.';
+          this.feedback.showSuccess(`User "${confirmation.name}" (${confirmation.detail}) was permanently deleted.`, 'User Deleted');
         }
         this.pendingDelete = null;
         this.deleting = false;
       },
       error: (error: unknown) => {
         this.errorMessage = getApiErrorMessage(error);
+        this.feedback.showFromApiError(error, `Failed to Delete ${confirmation.type === 'travel' ? 'Travel' : 'User'}`);
         this.deleting = false;
       }
     });
