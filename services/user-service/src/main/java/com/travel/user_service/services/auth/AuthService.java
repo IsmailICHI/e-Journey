@@ -4,6 +4,7 @@ import com.travel.user_service.dto.login.AuthResponse;
 import com.travel.user_service.dto.login.LoginRequest;
 import com.travel.user_service.dto.register.RegisterRequest;
 import com.travel.user_service.dto.register.RegisterResponse;
+import com.travel.user_service.exceptions.BadRequestException;
 import com.travel.user_service.models.Role;
 import com.travel.user_service.models.User;
 import com.travel.user_service.repository.UserRepository;
@@ -12,7 +13,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import org.springframework.dao.DuplicateKeyException;
-// import com.cinema.user.exceptions.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,15 +28,14 @@ public class AuthService {
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateKeyException("Email already registered");
+        String email = request.getEmail().trim().toLowerCase();
+        if (userRepository.existsByEmail(email)) {
+            throw new DuplicateKeyException("Email already registered: " + email);
         }
 
         User user = new User();
-
-        user.setEmail(request.getEmail());
-        user.setFullName(request.getFullName());
+        user.setEmail(email);
+        user.setFullName(request.getFullName().trim());
         user.setRole(Role.User);
         user.setState(true);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -52,13 +51,16 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+        String email = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("Invalid email or password"));
 
-        if (!passwordEncoder.matches(
-                request.getPassword(),
-                user.getPassword())) {
-            throw new IllegalArgumentException("Invalid email or password");
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new BadRequestException("Invalid email or password");
+        }
+
+        if (Boolean.FALSE.equals(user.getState())) {
+            throw new BadRequestException("Account is deactivated. Please contact an administrator.");
         }
 
         String token = jwtService.generateToken(user);
