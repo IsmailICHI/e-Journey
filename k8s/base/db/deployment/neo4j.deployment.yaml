@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: neo4j
+  namespace: travel-plan
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/component: graph-database
+spec:
+  serviceName: neo4j
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neo4j
+  template:
+    metadata:
+      labels:
+        app: neo4j
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: neo4j
+          image: neo4j:5.15-community
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_NEO4J_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: neo4j-password
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - |
+              export NEO4J_AUTH="neo4j/${APP_NEO4J_PASSWORD}"
+              exec /startup/docker-entrypoint.sh neo4j
+          ports:
+            - name: http
+              containerPort: 7474
+            - name: bolt
+              containerPort: 7687
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - cypher-shell -u neo4j -p "$APP_NEO4J_PASSWORD" 'RETURN 1' >/dev/null 2>&1
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - cypher-shell -u neo4j -p "$APP_NEO4J_PASSWORD" 'RETURN 1' >/dev/null 2>&1
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - cypher-shell -u neo4j -p "$APP_NEO4J_PASSWORD" 'RETURN 1' >/dev/null 2>&1
+            initialDelaySeconds: 40
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 150m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: neo4j-data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: neo4j-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 8Gi

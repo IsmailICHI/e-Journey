@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: travel-plan
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/component: edge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: gateway
+          image: travelplan/gateway:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8089
+            - name: management
+              containerPort: 8090
+          env:
+            - name: SERVER_PORT
+              value: "8089"
+            - name: MANAGEMENT_SERVER_PORT
+              value: "8090"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: jwt-secret
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: redis-password
+            - name: USER_SERVICE_URL
+              value: http://user-service:8081
+            - name: TRAVEL_SERVICE_URL
+              value: http://travel-service:8082
+            - name: CORS_ALLOWED_ORIGINS
+              value: http://travel-plan.local
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            initialDelaySeconds: 45
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 750m
+              memory: 768Mi

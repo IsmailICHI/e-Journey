@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: travel-plan
+  namespace: travel-plan
+  labels:
+    app.kubernetes.io/name: travel-plan-ingress
+    app.kubernetes.io/component: ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: travel-plan.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 8089
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+# HTTPS can be enabled by creating a secret such as travel-plan-local-tls and adding:
+# tls:
+#   - hosts:
+#       - travel-plan.local
+#     secretName: travel-plan-local-tls

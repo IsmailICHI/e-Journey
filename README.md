@@ -75,6 +75,18 @@ database URLs inside Compose use the internal service names.
 Jenkins and SonarQube use their own Compose project and data volumes; see
 [infrastructure/ci-platform/README.md](./infrastructure/ci-platform/README.md).
 
+## Kubernetes dev environment
+
+A single-node k3s development cluster runs inside the VirtualBox VM defined by [Vagrantfile](./Vagrantfile). Ansible runs on the workstation and provisions that VM, so workstation sudo is not required. The active manifests include the frontend, gateway, user service, travel service, Redis, PostgreSQL, Neo4j, Traefik Ingress, and CPU-based HPAs. The payment service is excluded.
+
+```bash
+vagrant up k3s-server
+ansible-playbook -i infrastructure/ansible/inventories/dev/hosts.yml infrastructure/ansible/playbooks/install-k3s.yml
+ansible-playbook -i infrastructure/ansible/inventories/dev/hosts.yml infrastructure/ansible/playbooks/configure-k3s.yml
+```
+
+Create the `travel-plan-secrets` Kubernetes Secret inside the VM, then run the Ansible `deploy-app.yml` playbook to build/import the images and apply the manifests. The app is served at `http://localhost:8088`. See [infrastructure/ansible/README.md](./infrastructure/ansible/README.md) for the VM workflow and [k8s/README.md](./k8s/README.md) for cluster details.
+
 **Angular client**:
 
 ```powershell

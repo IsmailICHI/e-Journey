@@ -1,0 +1,190 @@
+---
+- name: Deploy the Travel-Plan application into k3s
+  hosts: k3s_server
+  become: true
+  gather_facts: true
+  vars_files:
+    - ../group_vars/all.yml
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+
+  tasks:
+    - name: Ensure the application namespace exists
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - -f
+          - /vagrant/k8s/base/namespace.yaml
+      changed_when: false
+
+    - name: Check whether the application Secret exists
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - get
+          - secret
+          - travel-plan-secrets
+      register: app_secret
+      failed_when: false
+      changed_when: false
+
+    - name: Stop when the application Secret is missing
+      ansible.builtin.fail:
+        msg: Create travel-plan-secrets in the VM namespace before deployment; see infrastructure/ansible/README.md.
+      when: app_secret.rc != 0
+
+    - name: Build application images and import them into k3s
+      ansible.builtin.shell: |
+        set -euo pipefail
+        archive="$(mktemp)"
+        docker build --file "/vagrant/{{ item.dockerfile }}" --tag "{{ item.image }}" /vagrant
+        docker save --output "$archive" "{{ item.image }}"
+        k3s ctr images import "$archive"
+        rm -f "$archive"
+      args:
+        executable: /bin/bash
+      loop:
+        - dockerfile: services/client/Dockerfile
+          image: travelplan/frontend:dev
+        - dockerfile: services/gateway/Dockerfile
+          image: travelplan/gateway:dev
+        - dockerfile: services/user-service/Dockerfile
+          image: travelplan/user-service:dev
+        - dockerfile: services/travel-service/DockerFile
+          image: travelplan/travel-service:dev
+      changed_when: true
+
+    - name: Apply the application manifests from the repo
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - -k
+          - /vagrant/k8s/overlays/dev
+      changed_when: true
+
+    - name: Read the desired Neo4j StatefulSet revision
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - get
+          - statefulset
+          - neo4j
+          - -o
+          - jsonpath={.status.updateRevision}
+      register: neo4j_update_revision
+      changed_when: false
+
+    - name: Read the current Neo4j pod revision
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - get
+          - pod
+          - neo4j-0
+          - -o
+          - jsonpath={.metadata.labels.controller-revision-hash}
+      register: neo4j_pod_revision
+      changed_when: false
+
+    - name: Replace a stale Neo4j pod so it adopts the current StatefulSet template
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - delete
+          - pod
+          - neo4j-0
+          - --wait=true
+      when: neo4j_pod_revision.stdout != neo4j_update_revision.stdout
+      changed_when: true
+
+    - name: Wait for Neo4j to become Ready
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - rollout
+          - status
+          - statefulset/neo4j
+          - --timeout=360s
+      changed_when: false
+
+    - name: Wait for PostgreSQL to become Ready
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - rollout
+          - status
+          - statefulset/postgres
+          - --timeout=180s
+      changed_when: false
+
+    - name: Read existing PostgreSQL databases
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - exec
+          - postgres-0
+          - --
+          - psql
+          - -U
+          - postgres
+          - -d
+          - postgres
+          - -tAc
+          - SELECT datname FROM pg_database
+      register: postgres_databases
+      changed_when: false
+
+    - name: Create missing application databases
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - exec
+          - postgres-0
+          - --
+          - psql
+          - -U
+          - postgres
+          - -d
+          - postgres
+          - -c
+          - "CREATE DATABASE {{ item }}"
+      loop:
+        - user_db
+        - travel_db
+      when: item not in postgres_databases.stdout_lines
+      changed_when: true
+
+    - name: Wait for application deployments to become ready
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - rollout
+          - status
+          - "deployment/{{ item }}"
+          - --timeout=180s
+      loop:
+        - frontend
+        - gateway
+        - user-service
+        - travel-service
+      changed_when: false
