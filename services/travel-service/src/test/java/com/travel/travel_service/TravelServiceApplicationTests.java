@@ -126,4 +126,42 @@ class TravelServiceApplicationTests {
 		assertThat(travelRepository.findById(created.travelId())).isEmpty();
 	}
 
+	@Test
+	@WithMockUser(roles = "ADMIN")
+	void invalidTravelCreationReturnsSpecifiedBadRequestWithValidationErrors() throws Exception {
+		mockMvc.perform(post("/api/v1/admin/travels")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\":\"\",\"city\":\"\",\"country\":\"\",\"duration\":0,\"paymentMethod\":\"Bitcoin\"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status").value(400))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error").value("Bad Request"))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.validationErrors.title").exists())
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.validationErrors.city").exists())
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.validationErrors.duration").exists())
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.validationErrors.paymentMethod").exists());
+	}
+
+	@Test
+	@WithMockUser(roles = "ADMIN")
+	void invalidDateRangeReturnsSpecifiedBadRequest() throws Exception {
+		mockMvc.perform(post("/api/v1/admin/travels")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\":\"Test trip\",\"city\":\"Rabat\",\"country\":\"Morocco\",\"duration\":3,\"paymentMethod\":\"Stripe\",\"startDate\":\"2026-12-10\",\"endDate\":\"2026-12-01\"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status").value(400))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error").value("Bad Request"))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message", org.hamcrest.Matchers.containsString("End date")));
+	}
+
+	@Test
+	@WithMockUser(roles = "ADMIN")
+	void getNonExistentTravelReturnsSpecifiedNotFound() throws Exception {
+		mockMvc.perform(get("/api/v1/admin/travels/999999"))
+				.andExpect(status().isNotFound())
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status").value(404))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error").value("Not Found"))
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message").value("Travel with ID 999999 not found"));
+	}
+
 }
+

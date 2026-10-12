@@ -17,6 +17,7 @@ import com.travel.travel_service.dto.TravelResponse;
 import com.travel.travel_service.model.ItineraryEntity;
 import com.travel.travel_service.model.TravelEntity;
 import com.travel.travel_service.repository.TravelRepository;
+import com.travel.travel_service.exceptions.BadRequestException;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -47,6 +48,7 @@ public class TravelService {
         public TravelPageResponse getTravelPage(int page) {
                 Page<TravelEntity> travels = travelRepository.findAllByOrderByTravelIdAsc(
                                 PageRequest.of(Math.max(0, page), ADMIN_PAGE_SIZE, Sort.unsorted()));
+                                
                 List<TravelResponse> content = travels.getContent().stream()
                                 .map(this::toResponse)
                                 .toList();
@@ -114,22 +116,34 @@ public class TravelService {
         private void applyRequest(TravelEntity travel, TravelRequest request) {
                 if (request.startDate() != null && request.endDate() != null
                                 && request.endDate().isBefore(request.startDate())) {
-                        throw new IllegalArgumentException("End date must be on or after the start date");
+                        throw new BadRequestException("End date (" + request.endDate() + ") must be on or after start date (" + request.startDate() + ")");
                 }
 
-                travel.setTitle(request.title());
-                travel.setCity(request.city());
-                travel.setCountry(request.country());
-                travel.setDescription(request.description());
-                travel.setImageUrl(request.imageUrl());
+                if (request.itinerary() != null) {
+                        java.util.Set<Integer> seenDays = new java.util.HashSet<>();
+                        for (ItineraryRequest item : request.itinerary()) {
+                                if (item.dayNumber() != null && !seenDays.add(item.dayNumber())) {
+                                        throw new BadRequestException("Duplicate itinerary day number: Day " + item.dayNumber());
+                                }
+                        }
+                }
+
+                travel.setTitle(request.title() != null ? request.title().trim() : null);
+                travel.setCity(request.city() != null ? request.city().trim() : null);
+                travel.setCountry(request.country() != null ? request.country().trim() : null);
+                travel.setDescription(request.description() != null ? request.description().trim() : null);
+                travel.setImageUrl(request.imageUrl() != null ? request.imageUrl().trim() : null);
                 travel.setDuration(request.duration());
                 travel.setDestinations(request.destinations() == null
                                 ? new ArrayList<>()
-                                : new ArrayList<>(request.destinations()));
+                                : new ArrayList<>(request.destinations().stream()
+                                                .map(String::trim)
+                                                .filter(s -> !s.isEmpty())
+                                                .toList()));
                 travel.setStartDate(request.startDate());
                 travel.setEndDate(request.endDate());
-                travel.setAccommodation(request.accommodation());
-                travel.setTransportation(request.transportation());
+                travel.setAccommodation(request.accommodation() != null ? request.accommodation().trim() : null);
+                travel.setTransportation(request.transportation() != null ? request.transportation().trim() : null);
                 travel.setPaymentMethod(request.paymentMethod());
                 travel.getItinerary().clear();
 
@@ -139,7 +153,7 @@ public class TravelService {
                                         .forEach(item -> {
                                                 item.setTravel(travel);
                                                 travel.getItinerary().add(item);
-                                        });
+                                         });
                 }
         }
 
