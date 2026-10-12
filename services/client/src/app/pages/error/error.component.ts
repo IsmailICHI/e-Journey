@@ -91,7 +91,7 @@ const ERROR_DETAILS: Record<number, ErrorDetails> = {
   imports: [CommonModule, RouterLink, NavbarComponent],
   template: `
     <main class="flex min-h-screen items-center justify-center bg-[#080706] px-5 pb-12 pt-24 text-stone-100">
-      <app-navbar />
+      <app-navbar activePage="home" />
       <section class="w-full max-w-lg border border-white/10 bg-white/[0.025] p-7 text-center sm:p-10">
         <a routerLink="/home" aria-label="TRAVELPLAN home" class="mx-auto mb-8 flex w-fit items-center gap-3 text-white">
           <img src="/travelplan-logo.svg" alt="" class="h-11 w-11" />
