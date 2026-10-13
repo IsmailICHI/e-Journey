@@ -46,11 +46,11 @@ Kustomize is included in the standard Kubernetes tooling and lets us keep a sing
 
 ## Development prerequisites
 
-The repository's development cluster runs in the VirtualBox VM from the root `Vagrantfile`. Create and provision it using [the Ansible VM instructions](../infrastructure/ansible/README.md). k3s provides the cluster API and Traefik ingress. Create the `travel-plan-secrets` Secret in the VM before deploying.
+The repository's development cluster runs in the VirtualBox VM from the root `Vagrantfile`. Create and provision it using [the Ansible VM instructions](../infrastructure/ansible/README.md). k3s provides the cluster API and Traefik ingress. The Ansible deploy playbook copies and applies the development Secret from `infrastructure/ansible/files/travel-plan-secrets.yaml` before deploying workloads.
 
 ## Create the required secrets
 
-Copy the example secret and replace the placeholders before deploying:
+For this learning setup, Ansible applies the development Secret automatically. The file uses dummy credentials and must not be used in a production environment. For another cluster, create a Secret with suitable credentials rather than applying the example placeholders:
 
 ```bash
 cp k8s/base/secrets.example.yaml /tmp/travel-plan-secrets.yaml

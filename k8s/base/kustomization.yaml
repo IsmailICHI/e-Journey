@@ -5,6 +5,10 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - ingress.yaml
+  - db/deployment/pg.deployment.yaml
+  - db/deployment/neo4j.deployment.yaml
+  - db/services/pg.service.yaml
+  - db/services/neo4j.service.yaml
   - deployment/frontend.deployment.yaml
   - deployment/gateway.deployment.yaml
   - deployment/redis.deployment.yaml

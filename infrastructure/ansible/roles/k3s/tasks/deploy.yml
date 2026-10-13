@@ -1,0 +1,160 @@
+---
+- name: Require secrets and build outputs from the Jenkins environment
+  ansible.builtin.assert:
+    that:
+      - lookup('env', 'JWT_SECRET') | length > 0
+      - lookup('env', 'POSTGRES_USER') | length > 0
+      - lookup('env', 'POSTGRES_PASSWORD') | length > 0
+      - lookup('env', 'REDIS_PASSWORD') | length > 0
+      - lookup('env', 'NEO4J_PASSWORD') | length > 0
+      - ci_image_archive_dir is defined
+      - deployment_source is defined
+    fail_msg: Jenkins must load .env and provide all application secrets and image archives.
+  no_log: true
+
+- name: Stage the tested Kubernetes manifests and images on the VM
+  block:
+    - name: Create a temporary deployment directory
+      ansible.builtin.file:
+        path: /tmp/travel-plan-ci
+        state: directory
+        mode: '0750'
+
+    - name: Copy the tested Kubernetes manifests to the VM
+      ansible.builtin.copy:
+        src: "{{ deployment_source }}/k8s/"
+        dest: /tmp/travel-plan-ci/k8s/
+        mode: preserve
+
+    - name: Ensure the application namespace exists
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - -f
+          - /tmp/travel-plan-ci/k8s/base/namespace.yaml
+      changed_when: false
+
+    - name: Apply the application Secret from the temporary .env environment
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - -f
+          - -
+        stdin: "{{ {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'travel-plan-secrets', 'namespace': 'travel-plan'}, 'type': 'Opaque', 'stringData': {'jwt-secret': lookup('env', 'JWT_SECRET'), 'postgres-user': lookup('env', 'POSTGRES_USER'), 'postgres-password': lookup('env', 'POSTGRES_PASSWORD'), 'redis-password': lookup('env', 'REDIS_PASSWORD'), 'neo4j-password': lookup('env', 'NEO4J_PASSWORD')}} | to_json }}"
+      no_log: true
+      changed_when: true
+
+    - name: Copy each tested image archive to the VM
+      ansible.builtin.copy:
+        src: "{{ ci_image_archive_dir }}/{{ item }}.tar"
+        dest: "/tmp/travel-plan-ci/{{ item }}.tar"
+        mode: '0600'
+      loop:
+        - frontend
+        - gateway
+        - user-service
+        - travel-service
+
+    - name: Import tested images into k3s containerd
+      ansible.builtin.command:
+        argv:
+          - k3s
+          - ctr
+          - images
+          - import
+          - "/tmp/travel-plan-ci/{{ item }}.tar"
+      loop:
+        - frontend
+        - gateway
+        - user-service
+        - travel-service
+      changed_when: true
+
+    - name: Apply the tested development overlay
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - -k
+          - /tmp/travel-plan-ci/k8s/overlays/dev
+      changed_when: true
+
+    - name: Wait for Neo4j and PostgreSQL
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - rollout
+          - status
+          - "statefulset/{{ item }}"
+          - --timeout=360s
+      loop:
+        - neo4j
+        - postgres
+      changed_when: false
+
+    - name: Read existing PostgreSQL databases
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - exec
+          - postgres-0
+          - --
+          - psql
+          - -U
+          - "{{ lookup('env', 'POSTGRES_USER') }}"
+          - -d
+          - postgres
+          - -tAc
+          - SELECT datname FROM pg_database
+      register: postgres_databases
+      changed_when: false
+
+    - name: Create missing application databases
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - exec
+          - postgres-0
+          - --
+          - psql
+          - -U
+          - "{{ lookup('env', 'POSTGRES_USER') }}"
+          - -d
+          - postgres
+          - -c
+          - "CREATE DATABASE {{ item }}"
+      loop:
+        - user_db
+        - travel_db
+      when: item not in postgres_databases.stdout_lines
+      changed_when: true
+
+    - name: Wait for application deployments
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - rollout
+          - status
+          - "deployment/{{ item }}"
+          - --timeout=180s
+      loop:
+        - frontend
+        - gateway
+        - user-service
+        - travel-service
+      changed_when: false
+  always:
+    - name: Remove staged deployment files from the VM
+      ansible.builtin.file:
+        path: /tmp/travel-plan-ci
+        state: absent

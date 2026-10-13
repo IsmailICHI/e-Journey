@@ -1,0 +1,77 @@
+---
+- name: Confirm the local CI prerequisites exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ ci_env_file }}"
+    - "{{ ci_k3s_key }}"
+    - "{{ ci_docker_socket }}"
+  register: ci_prerequisite_files
+
+- name: Stop when local CI prerequisites are missing
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.isreg or item.stat.issock
+    fail_msg: "Required local file or socket is missing: {{ item.item }}"
+  loop: "{{ ci_prerequisite_files.results }}"
+
+- name: Ensure Docker uses a local Unix socket
+  ansible.builtin.assert:
+    that:
+      - ci_docker_host is match('^unix://')
+    fail_msg: Set DOCKER_HOST to an active local Unix socket endpoint before starting CI.
+
+- name: Read host Docker socket group ID
+  ansible.builtin.command:
+    argv:
+      - stat
+      - -c
+      - '%g'
+      - "{{ ci_docker_socket }}"
+  register: ci_docker_socket_group
+  changed_when: false
+
+- name: Use a safe socket group for rootless Docker
+  ansible.builtin.set_fact:
+    ci_docker_socket_gid: >-
+      {{
+        '0' if ci_docker_socket is match('^/run/user/')
+        else ci_docker_socket_group.stdout | trim
+      }}
+
+- name: Start Jenkins and SonarQube with Docker Compose
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --env-file
+      - "{{ ci_env_file }}"
+      - --file
+      - "{{ ci_compose_file }}"
+      - up
+      - --detach
+      - --build
+  environment:
+    DOCKER_SOCKET_GID: "{{ ci_docker_socket_gid }}"
+    DOCKER_SOCKET_PATH: "{{ ci_docker_socket }}"
+    DOCKER_HOST: "{{ ci_docker_host }}"
+
+- name: Wait for SonarQube to become available
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9000/api/system/status
+    status_code: 200
+    return_content: true
+  register: ci_sonar_status
+  retries: 36
+  delay: 10
+  until: ci_sonar_status.json.status == 'UP'
+
+- name: Wait for Jenkins HTTP endpoint
+  ansible.builtin.uri:
+    url: http://127.0.0.1:8080/login
+    status_code: 200
+  register: ci_jenkins_status
+  retries: 36
+  delay: 5
+  until: ci_jenkins_status.status == 200

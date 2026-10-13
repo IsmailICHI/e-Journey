@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: sonarqube
       POSTGRES_USER: sonar
-      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:?Set SONAR_DB_PASSWORD in the root .env file}
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:-travelplan-sonar-local-only}
     volumes:
       - sonar-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -28,7 +28,8 @@ services:
     environment:
       SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonarqube
       SONAR_JDBC_USERNAME: sonar
-      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:?Set SONAR_DB_PASSWORD in the root .env file}
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:-travelplan-sonar-local-only}
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
     ports:
       - "127.0.0.1:${SONARQUBE_FORWARD_PORT:-9000}:9000"
     volumes:
@@ -49,17 +50,27 @@ services:
     container_name: travelplan-jenkins
     depends_on:
       - sonarqube
-    group_add:
-      - "${DOCKER_SOCKET_GID:-0}"
+    user: root
+    entrypoint: ["/usr/local/bin/jenkins-entrypoint"]
+    command: ["--httpPort=8080"]
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+      DOCKER_SOCKET_GID: "${DOCKER_SOCKET_GID:-0}"
+      DOCKER_SOCKET_PATH: "${DOCKER_SOCKET_PATH:-/var/run/docker.sock}"
     ports:
       - "127.0.0.1:${JENKINS_FORWARD_PORT:-8080}:8080"
-      - "127.0.0.1:${JENKINS_AGENT_FORWARD_PORT:-50000}:50000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      ci-platform:
+        aliases:
+          - jenkins
     volumes:
       - jenkins-home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
+      - "${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock"
+      - ../../.env:/run/host-project.env:ro
+      - ../../.vagrant/machines/k3s-server/virtualbox/private_key:/run/host-vagrant-key:ro
     restart: unless-stopped
-    networks:
-      - ci-platform
 
 volumes:
   sonar-db-data:

@@ -1,0 +1,12 @@
+---
+- name: Install the k3s server
+  ansible.builtin.import_tasks: install.yml
+  when: k3s_action == 'install'
+
+- name: Configure kubectl for the VM user
+  ansible.builtin.import_tasks: configure.yml
+  when: k3s_action == 'configure'
+
+- name: Deploy a CI-built application revision
+  ansible.builtin.import_tasks: deploy.yml
+  when: k3s_action == 'deploy_ci'

@@ -1,52 +1,55 @@
 # Jenkins and SonarQube
 
-This Compose project is separate from the application stack. It starts Jenkins,
-SonarQube Community Build, and a dedicated PostgreSQL database for SonarQube.
-The Angular client remains local and is not built or served by these containers.
+The Ansible `ci` role starts this Compose project: Jenkins, SonarQube, and a
+dedicated PostgreSQL database for SonarQube. The app deployment is separate and
+uses the Ansible `k3s` role to reach the Vagrant VM.
 
-## Configure and start
+## Start everything
 
-Add a strong, unique `SONAR_DB_PASSWORD` to the repository-root `.env` file.
-Do not reuse the application database password. On Linux, set
-`DOCKER_SOCKET_GID` to the group ID that owns `/var/run/docker.sock` if it is
-not accessible to the Jenkins container's default group. The Docker socket
-grants Jenkins control over the host Docker daemon, so only trusted Jenkins
-administrators should have access.
+From the repository root, create and prepare the VM first, then start the CI
+platform:
 
-From the repository root:
-
-```powershell
-docker compose -f infrastructure/ci-platform/docker-compose.yaml up -d --build
+```bash
+vagrant up k3s-server
+ANSIBLE_CONFIG=infrastructure/ansible/ansible.cfg ansible-playbook infrastructure/ansible/playbooks/install-k3s.yml
+ANSIBLE_CONFIG=infrastructure/ansible/ansible.cfg ansible-playbook infrastructure/ansible/playbooks/configure-k3s.yml
+ANSIBLE_CONFIG=infrastructure/ansible/ansible.cfg ansible-playbook infrastructure/ansible/playbooks/ci-platform.yml
 ```
 
-Jenkins is available at `http://127.0.0.1:8080` and SonarQube at
-`http://127.0.0.1:9000`. Jenkins installs the plugins listed in
-`jenkins/plugins.txt` when its image is built. The Jenkins home and SonarQube
-data are retained in named volumes.
+Jenkins is available at `http://127.0.0.1:8080`; SonarQube is at
+`http://127.0.0.1:9000`. The Ansible role waits for both services. Persistent
+Jenkins and SonarQube data live in named Compose volumes.
 
-## Jenkins configuration
+## One-time Jenkins setup
 
-1. Unlock Jenkins using the initial administrator password shown in the Jenkins
-   container logs, then create an administrator account.
-2. Under **Manage Jenkins > System**, add a SonarQube installation named
-   `SonarQube` with server URL `http://sonarqube:9000` and a SonarQube token
-   stored in Jenkins credentials.
-3. Under **Manage Jenkins > Tools**, configure a SonarScanner installation
-   named `SonarScanner` (install automatically or provide its local path).
-4. Create a Pipeline job pointing to this repository and its root `Jenkinsfile`.
-   Docker-backed Maven agents join the `travelplan-ci` network to reach
-   SonarQube.
+1. Unlock Jenkins using the initial administrator password in its container
+   logs and create an administrator account.
+2. In SonarQube, create a user token and create/configure the `e-journey-backend`
+   project if project auto-provisioning is disabled.
+3. In Jenkins, add the token as a **Secret text** credential with ID
+   `sonar-token`.
+4. Create a Pipeline or Multibranch Pipeline job using the repository root
+   `Jenkinsfile`. Deployment runs only for branch `main`.
 
-The pipeline runs `clean verify` for the gateway, user, and travel services,
-then uploads the JaCoCo XML reports to SonarQube. The payment service is not
-included. Configure the project key `e-journey-backend` and quality gates in
-SonarQube as desired.
+The pipeline runs Maven `clean verify` for gateway, user-service, and
+travel-service, builds the frontend and backend images, submits the root
+`sonar-project.properties` analysis, and polls the SonarQube quality gate. Only
+after a passing gate does `main` deploy through Ansible to the k3s VM. It copies
+the host `.env` into the Jenkins workspace immediately before deployment and
+removes that workspace copy in the pipeline's `always` cleanup. The `.env` is
+not copied into the Jenkins image or kept in its home volume.
 
-## Backend coverage and containers
+## Local-only security boundary
 
-Each included backend Maven project creates JaCoCo XML at
-`services/<service>/target/site/jacoco/jacoco.xml` during `verify`. Run the
-application stack separately from the repository root with
-`docker compose up -d --build`. It starts PostgreSQL, Redis, Neo4j, and the
-gateway, user, and travel services; the Angular client is intentionally not
-part of Compose.
+Jenkins uses host networking so it can reach Vagrant's SSH port forwarded to
+`127.0.0.1:2222` and SonarQube on `127.0.0.1:9000`. Jenkins itself binds only to
+host loopback. The container receives the host Docker socket and a read-only
+mount of the Vagrant private key; its entrypoint copies that key into a
+Jenkins-owned, mode-0600 runtime file. Docker socket access is effectively host
+administrator access. Do not expose this setup to untrusted users or use it as
+a production CI installation.
+
+The Compose file supplies a learning-only fallback Sonar database password if
+`SONAR_DB_PASSWORD` is not present in `.env`. Set a unique value for persistent
+use; changing it after the Sonar database volume has been initialized requires
+matching the existing database credentials.

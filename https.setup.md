@@ -3,7 +3,7 @@
 
 
 ```
-1. Clone Neo4flix
+1. Clone travel-paln
         ↓
 2. Install mkcert locally
         ↓
@@ -11,15 +11,15 @@
         ↓
 4. Trust the CA in Chrome
         ↓
-5. Generate a new neo4flix.local certificate
+5. Generate a new travel-paln.local certificate
         ↓
-6. Verify front-end/certs/
+6. Verify services/client/certs/
         ↓
 7. Start Docker frontend
         ↓
 8. Launch dedicated Chrome
         ↓
-9. Open https://neo4flix.local:8443
+9. Open https://travel-paln.local:8443
 ```
 
 ## Condensed commands:
@@ -39,18 +39,18 @@ mkdir -p "$CAROOT"
 
 # Trust CA in Chrome
 certutil -A \
-  -n "Neo4flix Local CA" \
+  -n "travel-paln Local CA" \
   -t "C,," \
   -i "$CAROOT/rootCA.pem" \
   -d sql:$HOME/.pki/nssdb
 
 # Generate certificate
-mkdir -p front-end/certs
+mkdir -p services/client/certs
 
 ~/.local/bin/mkcert \
-  -cert-file front-end/certs/neo4flix.pem \
-  -key-file front-end/certs/neo4flix-key.pem \
-  neo4flix.local localhost 127.0.0.1 ::1
+  -cert-file services/client/certs/travel-paln.pem \
+  -key-file services/client/certs/travel-paln-key.pem \
+  travel-paln.local localhost 127.0.0.1 ::1
 
 # Start frontend
 docker compose build frontend
@@ -58,14 +58,14 @@ docker compose up -d frontend
 
 # Launch dedicated Chrome
 /usr/bin/google-chrome \
-  --user-data-dir="$HOME/.config/google-chrome-neo4flix" \
-  --host-resolver-rules="MAP neo4flix.local 127.0.0.1"
+  --user-data-dir="$HOME/.config/google-chrome-travel-paln" \
+  --host-resolver-rules="MAP travel-paln.local 127.0.0.1"
 ```
 
 ## Domain name :
 
 ```
-Try to access this in the freshly opened window in Chrome : https://neo4flix.local:8443
+Try to access this in the freshly opened window in Chrome : https://travel-paln.local:8443
 ```
 ## Locally:
 ```
@@ -82,14 +82,14 @@ Try to access this in the freshly opened window in Chrome : https://neo4flix.loc
 │   └── nssdb/
 │
 └── .config/
-    └── google-chrome-neo4flix/
+    └── google-chrome-travel-paln/
 ```
 ### Never commit:
 
 ```
 front-end/certs/**
 rootCA-key.pem
-neo4flix-key.pem
+travel-paln-key.pem
 ```
 
 
@@ -98,7 +98,7 @@ neo4flix-key.pem
 ```
 Chrome
   │
-  │ neo4flix.local → 127.0.0.1
+  │ travel-paln.local → 127.0.0.1
   ▼
 127.0.0.1:8443
   │

@@ -1,0 +1,30 @@
+---
+# ==============================================================================
+# Local CI Platform Playbook: Docker Compose on the Host
+# ==============================================================================
+# k3s provisioning and cluster validation are intentionally kept separate from
+# this host-only automation. The CI stack stays on the workstation and the
+# Jenkins pipeline still deploys to the k3s VM only after a successful build.
+
+- name: Start Jenkins and SonarQube CI Platform on Host
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars:
+    ci_env_file: "{{ playbook_dir }}/../../../.env"
+    ci_k3s_key: "{{ playbook_dir }}/../../../.vagrant/machines/k3s-server/virtualbox/private_key"
+    ci_compose_file: "{{ playbook_dir }}/../../ci-platform/docker-compose.yaml"
+    ci_docker_socket_env: "{{ lookup('env', 'DOCKER_HOST') | regex_replace('^unix://', '') }}"
+    ci_docker_socket: >-
+      {{
+        ci_docker_socket_env
+        if (ci_docker_socket_env | length > 0)
+        else (
+          ('/run/user/' ~ ansible_user_uid ~ '/docker.sock')
+          if (query('fileglob', '/run/user/' ~ ansible_user_uid ~ '/docker.sock') | length > 0)
+          else '/var/run/docker.sock'
+        )
+      }}
+    ci_docker_host: "unix://{{ ci_docker_socket }}"
+  roles:
+    - ci
