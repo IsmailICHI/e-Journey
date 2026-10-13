@@ -18,23 +18,31 @@
           - /vagrant/k8s/base/namespace.yaml
       changed_when: false
 
-    - name: Check whether the application Secret exists
+    - name: Copy the development Secret manifest to the VM
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/travel-plan-secrets.yaml"
+        dest: /tmp/travel-plan-secrets.yaml
+        owner: root
+        group: root
+        mode: '0600'
+      no_log: true
+
+    - name: Apply the development Secret manifest
       ansible.builtin.command:
         argv:
           - kubectl
-          - -n
-          - travel-plan
-          - get
-          - secret
-          - travel-plan-secrets
-      register: app_secret
-      failed_when: false
-      changed_when: false
+          - apply
+          - -f
+          - /tmp/travel-plan-secrets.yaml
+      register: secret_apply
+      no_log: true
+      changed_when: "' created' in secret_apply.stdout or ' configured' in secret_apply.stdout"
 
-    - name: Stop when the application Secret is missing
-      ansible.builtin.fail:
-        msg: Create travel-plan-secrets in the VM namespace before deployment; see infrastructure/ansible/README.md.
-      when: app_secret.rc != 0
+    - name: Remove the temporary Secret manifest from the VM
+      ansible.builtin.file:
+        path: /tmp/travel-plan-secrets.yaml
+        state: absent
+      no_log: true
 
     - name: Build application images and import them into k3s
       ansible.builtin.shell: |

@@ -8,148 +8,139 @@ pipeline {
     }
 
     environment {
-        REGISTRY_URL = 'ghcr.io/replace-with-your-org'
-        IMAGE_TAG = "${GIT_COMMIT.take(12)}"
+        SONAR_URL = 'http://127.0.0.1:9000'
         K8S_NAMESPACE = 'travel-plan'
+        IMAGE_TAG = 'dev'
     }
 
     stages {
-        stage('Validate repository layout') {
+        stage('Validate repository') {
             steps {
                 sh '''
                     set -eu
+                    test -f sonar-project.properties
+                    test -f infrastructure/ansible/playbooks/deploy-ci.yml
+                    test -f k8s/overlays/dev/kustomization.yaml
                     test -f services/gateway/pom.xml
                     test -f services/user-service/pom.xml
                     test -f services/travel-service/pom.xml
-                    test -f k8s/overlays/dev/kustomization.yaml
-                    if grep -R "payment-service" -n k8s >/dev/null 2>&1; then
-                        echo "Payment service is still present in the active k8s manifests." >&2
-                        exit 1
-                    fi
+                    kubectl kustomize k8s/overlays/dev > "$WORKSPACE/travel-plan-rendered.yaml"
                 '''
             }
         }
 
-        stage('Build and test backend services') {
+        stage('Test backend services') {
             steps {
                 sh '''
                     set -eu
                     for service in gateway user-service travel-service; do
-                        mvn -B -f "services/${service}/pom.xml" clean verify
+                        mvn -B -f "services/$service/pom.xml" clean verify
                     done
                 '''
             }
             post {
                 always {
                     junit allowEmptyResults: true, testResults: 'services/*/target/surefire-reports/*.xml'
-                    archiveArtifacts allowEmptyArchive: true, artifacts: 'services/*/target/site/jacoco/jacoco.xml'
                 }
             }
         }
 
-        stage('SonarQube analysis') {
-            steps {
-                script {
-                    def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('SonarQube') {
-                        sh "\"${scannerHome}/bin/sonar-scanner\" -Dproject.settings=infrastructure/ci-platform/sonar-project.properties"
-                    }
-                }
-            }
-        }
-
-        stage('Build container images') {
+        stage('Build application images') {
             steps {
                 sh '''
                     set -eu
-                    for service in gateway user-service travel-service; do
-                        docker build --file "services/${service}/Dockerfile" --tag "${REGISTRY_URL}/travel-plan-${service}:${IMAGE_TAG}" .
+                    mkdir -p .ci-images
+                                        docker build --file services/client/Dockerfile \
+                                            --tag "travelplan/frontend:$IMAGE_TAG" .
+                                        docker build --file services/gateway/Dockerfile \
+                                            --tag "travelplan/gateway:$IMAGE_TAG" .
+                                        docker build --file services/user-service/Dockerfile \
+                                            --tag "travelplan/user-service:$IMAGE_TAG" .
+                                        docker build --file services/travel-service/DockerFile \
+                                            --tag "travelplan/travel-service:$IMAGE_TAG" .
+                    for image in frontend gateway user-service travel-service; do
+                                                docker save --output ".ci-images/$image.tar" \
+                                                    "travelplan/$image:$IMAGE_TAG"
                     done
                 '''
             }
         }
 
-        stage('Push images') {
-            when {
-                branch 'main'
-            }
+        stage('SonarQube analysis and quality gate') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'container-registry',
-                    usernameVariable: 'REGISTRY_USER',
-                    passwordVariable: 'REGISTRY_TOKEN'
-                )]) {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     sh '''
+                        set +x
+                        sonar-scanner \\
+                          -Dproject.settings=sonar-project.properties \\
+                          -Dsonar.host.url="$SONAR_URL" \\
+                          -Dsonar.token="$SONAR_TOKEN"
+                    '''
+                    sh '''
+                        set +x
                         set -eu
-                        echo "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
-                        for service in gateway user-service travel-service; do
-                            docker push "${REGISTRY_URL}/travel-plan-${service}:${IMAGE_TAG}"
+                        task_url="$(sed -n 's/^ceTaskUrl=//p' .scannerwork/report-task.txt)"
+                        test -n "$task_url"
+                        analysis_id=
+                        task_status=
+                        for attempt in $(seq 1 36); do
+                            task_json="$(curl --fail --silent --show-error --user "$SONAR_TOKEN:" "$task_url")"
+                            task_status="$(printf '%s' "$task_json" | jq -r '.task.status')"
+                            analysis_id="$(printf '%s' "$task_json" | jq -r '.task.analysisId // empty')"
+                            if [ "$task_status" = SUCCESS ]; then
+                                break
+                            fi
+                            if [ "$task_status" = FAILED ] || [ "$task_status" = CANCELED ]; then
+                                echo "SonarQube background task ended with status: $task_status" >&2
+                                exit 1
+                            fi
+                            sleep 5
                         done
-                        docker logout ghcr.io
+                        test "$task_status" = SUCCESS
+                        test -n "$analysis_id"
+                        gate_json="$(curl --fail --silent --show-error --user "$SONAR_TOKEN:" \
+                          "$SONAR_URL/api/qualitygates/project_status?analysisId=$analysis_id")"
+                        gate_status="$(printf '%s' "$gate_json" | jq -r '.projectStatus.status')"
+                        if [ "$gate_status" != OK ]; then
+                            echo "SonarQube quality gate failed: $gate_status" >&2
+                            exit 1
+                        fi
                     '''
                 }
             }
         }
 
-        stage('Validate Kubernetes manifests') {
-            steps {
-                sh '''
-                    set -eu
-                    kubectl kustomize k8s/overlays/dev > "$WORKSPACE/travel-plan-rendered.yaml"
-                    kubectl apply --dry-run=client -k k8s/overlays/dev
-                '''
-            }
-        }
-
-        stage('Deploy to k3s development cluster') {
-            when {
-                branch 'main'
-            }
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
-                    sh '''
-                        set -eu
-                        export KUBECONFIG="$WORKSPACE/.kubeconfig"
-                        cp "$KUBECONFIG_FILE" "$KUBECONFIG"
-                        kubectl apply -k k8s/overlays/dev
-                        kubectl -n "$K8S_NAMESPACE" rollout status deployment/gateway --timeout=180s
-                        kubectl -n "$K8S_NAMESPACE" rollout status deployment/user-service --timeout=180s
-                        kubectl -n "$K8S_NAMESPACE" rollout status deployment/travel-service --timeout=180s
-                    '''
-                }
-            }
-        }
-
-        stage('Verify rollout health') {
+        stage('Deploy to k3s VM') {
             when {
                 branch 'main'
             }
             steps {
                 sh '''
                     set -eu
-                    kubectl -n "$K8S_NAMESPACE" get pods
-                    kubectl -n "$K8S_NAMESPACE" get ingress
-                    kubectl -n "$K8S_NAMESPACE" get hpa
+                    test -r /run/host-project.env
+                    test -r /run/jenkins-k3s-key
+                    install -m 0600 /run/host-project.env .env
+                    export ANSIBLE_CONFIG="$WORKSPACE/infrastructure/ansible/ansible.cfg"
+                    export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
+                    python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
+                      ansible-playbook \
+                      -i infrastructure/ansible/inventories/dev/hosts.yml \
+                      infrastructure/ansible/playbooks/deploy-ci.yml \
+                                            --extra-vars "deployment_source=$WORKSPACE \
+                                                ci_image_archive_dir=$WORKSPACE/.ci-images \
+                                                ansible_ssh_private_key_file=/run/jenkins-k3s-key"
                 '''
-            }
-        }
-
-        stage('Approve staging deployment') {
-            when {
-                branch 'main'
-            }
-            steps {
-                input message: 'Approve deployment to staging or higher environment?', ok: 'Proceed'
             }
         }
     }
 
     post {
         always {
+            sh 'rm -f .env; rm -rf .ci-images .scannerwork'
             archiveArtifacts allowEmptyArchive: true, artifacts: 'travel-plan-rendered.yaml'
         }
         failure {
-            echo 'The deployment pipeline failed. Check the build, static analysis, or rollout status above.'
+            echo 'The pipeline failed. Review the test, SonarQube, or k3s deployment stage output.'
         }
     }
 }
