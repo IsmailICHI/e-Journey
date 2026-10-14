@@ -113,7 +113,7 @@ pipeline {
 
         stage('Deploy to k3s VM') {
             when {
-                branch 'main'
+                branch 'infra'
             }
             steps {
                 sh '''
