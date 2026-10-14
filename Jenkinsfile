@@ -113,7 +113,11 @@ pipeline {
 
         stage('Deploy to k3s VM') {
             when {
-                branch 'infra'
+                beforeAgent true
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH
+                    return branch == 'infra' || branch == 'origin/infra'
+                }
             }
             steps {
                 sh '''
