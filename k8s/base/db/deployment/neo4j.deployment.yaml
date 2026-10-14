@@ -40,6 +40,33 @@ spec:
               containerPort: 7474
             - name: bolt
               containerPort: 7687
+          # startupProbe:
+          #   exec:
+          #     command:
+          #       - sh
+          #       - -c
+          #       - cypher-shell -u neo4j -p "$APP_NEO4J_PASSWORD" 'RETURN 1' >/dev/null 2>&1
+          #   periodSeconds: 10
+          #   timeoutSeconds: 15
+          #   failureThreshold: 60
+          # readinessProbe:
+          #   exec:
+          #     command:
+          #       - sh
+          #       - -c
+          #       - cypher-shell -u neo4j -p "$APP_NEO4J_PASSWORD" 'RETURN 1' >/dev/null 2>&1
+          #   initialDelaySeconds: 20
+          #   periodSeconds: 10
+          #   timeoutSeconds: 5
+          # livenessProbe:
+          #   exec:
+          #     command:
+          #       - sh
+          #       - -c
+          #       - cypher-shell -u neo4j -p "$APP_NEO4J_PASSWORD" 'RETURN 1' >/dev/null 2>&1
+          #   initialDelaySeconds: 40
+          #   periodSeconds: 20
+          #   timeoutSeconds: 5
           startupProbe:
             exec:
               command:
@@ -47,26 +74,28 @@ spec:
                 - -c
                 - cypher-shell -u neo4j -p "$APP_NEO4J_PASSWORD" 'RETURN 1' >/dev/null 2>&1
             periodSeconds: 10
-            timeoutSeconds: 15
+            timeoutSeconds: 30
             failureThreshold: 60
+
           readinessProbe:
             exec:
               command:
                 - sh
                 - -c
                 - cypher-shell -u neo4j -p "$APP_NEO4J_PASSWORD" 'RETURN 1' >/dev/null 2>&1
-            initialDelaySeconds: 20
-            periodSeconds: 10
-            timeoutSeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 6
+
           livenessProbe:
             exec:
               command:
                 - sh
                 - -c
                 - cypher-shell -u neo4j -p "$APP_NEO4J_PASSWORD" 'RETURN 1' >/dev/null 2>&1
-            initialDelaySeconds: 40
             periodSeconds: 20
-            timeoutSeconds: 5
+            timeoutSeconds: 10
+            failureThreshold: 6
           resources:
             requests:
               cpu: 150m
