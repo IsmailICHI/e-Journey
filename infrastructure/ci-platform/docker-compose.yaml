@@ -17,7 +17,7 @@ services:
       retries: 12
     restart: unless-stopped
     networks:
-      - ci-platform
+      - sonar-database
 
   sonarqube:
     image: sonarqube:lts-community
@@ -31,7 +31,7 @@ services:
       SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:-travelplan-sonar-local-only}
       SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
     ports:
-      - "127.0.0.1:${SONARQUBE_FORWARD_PORT:-9000}:9000"
+      - "${SONARQUBE_FORWARD_PORT:-9000}:9000"
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-extensions:/opt/sonarqube/extensions
@@ -41,6 +41,7 @@ services:
       ci-platform:
         aliases:
           - sonarqube
+      sonar-database: {}
 
   jenkins:
     build:
@@ -58,7 +59,7 @@ services:
       DOCKER_SOCKET_GID: "${DOCKER_SOCKET_GID:-0}"
       DOCKER_SOCKET_PATH: "${DOCKER_SOCKET_PATH:-/var/run/docker.sock}"
     ports:
-      - "127.0.0.1:${JENKINS_FORWARD_PORT:-8080}:8080"
+      - "${JENKINS_FORWARD_PORT:-8080}:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -68,8 +69,9 @@ services:
     volumes:
       - jenkins-home:/var/jenkins_home
       - "${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock"
-      - ../../.env:/run/host-project.env:ro
-      - ../../.vagrant/machines/k3s-server/virtualbox/private_key:/run/host-vagrant-key:ro
+      - /opt/travelplan-ci/.env:/run/host-project.env:ro
+      - /var/lib/travelplan-ci/jenkins-deploy-key:/run/host-deploy-key:ro
+      - /etc/ssh/ssh_host_ed25519_key.pub:/run/host-ssh-host-key.pub:ro
     restart: unless-stopped
 
 volumes:
@@ -83,3 +85,7 @@ networks:
   ci-platform:
     name: travelplan-ci
     driver: bridge
+  sonar-database:
+    name: travelplan-sonar-database
+    driver: bridge
+    internal: true

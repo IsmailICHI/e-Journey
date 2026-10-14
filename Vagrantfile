@@ -5,9 +5,15 @@ Vagrant.configure("2") do |config|
   config.vm.define "k3s-server" do |server|
     server.vm.hostname = "travel-plan-k3s"
     server.vm.network "forwarded_port", guest: 22, host: 2222,
-      id: "ssh", auto_correct: false
-    server.vm.network "forwarded_port", guest: 80, host: 8088
-    server.vm.network "forwarded_port", guest: 6443, host: 16443
+      id: "ssh", host_ip: "127.0.0.1", auto_correct: false
+    server.vm.network "forwarded_port", guest: 80, host: 8088,
+      host_ip: "127.0.0.1"
+    server.vm.network "forwarded_port", guest: 8080, host: 8080,
+      host_ip: "127.0.0.1"
+    server.vm.network "forwarded_port", guest: 9000, host: 9000,
+      host_ip: "127.0.0.1"
+    server.vm.network "forwarded_port", guest: 6443, host: 16443,
+      host_ip: "127.0.0.1"
 
     server.vm.provider "virtualbox" do |vb|
       vb.memory = ENV.fetch("K3S_VM_MEMORY", "4096")

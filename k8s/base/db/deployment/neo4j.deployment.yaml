@@ -47,8 +47,8 @@ spec:
                 - -c
                 - cypher-shell -u neo4j -p "$APP_NEO4J_PASSWORD" 'RETURN 1' >/dev/null 2>&1
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 30
+            timeoutSeconds: 15
+            failureThreshold: 60
           readinessProbe:
             exec:
               command:

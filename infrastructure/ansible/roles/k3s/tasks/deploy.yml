@@ -90,7 +90,7 @@
           - rollout
           - status
           - "statefulset/{{ item }}"
-          - --timeout=360s
+          - --timeout=600s
       loop:
         - neo4j
         - postgres

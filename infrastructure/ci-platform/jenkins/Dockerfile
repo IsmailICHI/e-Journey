@@ -4,7 +4,9 @@ USER root
 ARG SONAR_SCANNER_VERSION=7.2.0.5079
 ARG KUBECTL_VERSION=v1.30.4
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ansible curl docker.io gosu jq maven python3-dotenv unzip \
+    && apt-get install -y --no-install-recommends ansible curl docker.io docker-cli gosu jq maven python3-dotenv unzip \
+    && test -x /usr/bin/docker \
+    && /usr/bin/docker --version \
     && curl -fsSLo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
     && chmod 0755 /usr/local/bin/kubectl \
     && curl -fsSLo /tmp/sonar-scanner.zip "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip" \

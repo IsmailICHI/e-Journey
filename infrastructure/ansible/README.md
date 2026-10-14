@@ -30,20 +30,21 @@ ansible-playbook -i infrastructure/ansible/inventories/dev/hosts.yml \
   infrastructure/ansible/playbooks/configure-k3s.yml
 ```
 
-### 3) Start the host CI platform with Docker Compose
+### 3) Start Jenkins and SonarQube on the k3s VM
 
 ```bash
 ANSIBLE_CONFIG=infrastructure/ansible/ansible.cfg \
   ansible-playbook infrastructure/ansible/playbooks/ci-platform.yml
 ```
 
-This starts Jenkins and SonarQube on the workstation through the existing Compose file, and waits for both endpoints to be reachable.
+This installs Compose support on the VM, starts the existing Compose project there, and verifies Jenkins can reach SonarQube over the private Compose network.
 
 Open them in the browser:
 
 ```bash
 http://127.0.0.1:8080
 http://127.0.0.1:9000
+http://localhost:8088
 ```
 
 ### 4) Manually deploy the app once to the VM
@@ -91,15 +92,17 @@ The first command creates a single Ubuntu VM and syncs this repository to `/vagr
 
 ## Start Jenkins and SonarQube
 
-After `vagrant up` has created the VM key, start the CI stack on the workstation:
+After `vagrant up` has created the VM, start the CI stack on that VM:
 
 ```bash
 ANSIBLE_CONFIG=infrastructure/ansible/ansible.cfg ansible-playbook infrastructure/ansible/playbooks/ci-platform.yml
 ```
 
-This runs the `ci` role, builds and starts the Jenkins/SonarQube Compose project,
-and waits until both web endpoints are available. Jenkins and SonarQube are
-local-only at `http://127.0.0.1:8080` and `http://127.0.0.1:9000`.
+This runs the `ci` role, builds and starts the Jenkins/SonarQube Compose project
+on the VM, and waits for Jenkins and its connection to SonarQube. Vagrant makes
+Jenkins, SonarQube, and the app available to the workstation at
+`http://127.0.0.1:8080`, `http://127.0.0.1:9000`, and
+`http://localhost:8088`, respectively.
 
 ## Deploy and validate
 
@@ -119,8 +122,8 @@ payment service is not included. The app ingress is forwarded to
 `http://localhost:8088`.
 
 The root Jenkinsfile needs a Jenkins Secret text credential with ID
-`sonar-token`. Deployment runs only from `main`; it requires the VM to be
-running and reachable at the Vagrant SSH forward on `127.0.0.1:2222`.
+`sonar-token`. Deployment runs only from `main`; Ansible uses a dedicated
+VM-local deployment key and verifies the VM SSH host key.
 
 ## VM lifecycle
 

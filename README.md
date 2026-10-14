@@ -92,7 +92,9 @@ ANSIBLE_CONFIG=infrastructure/ansible/ansible.cfg ansible-playbook infrastructur
 
 The pipeline deploys with the host `.env` values and removes its temporary
 workspace copy afterward. The manual `deploy-app.yml` remains available for
-development. The app is served at `http://localhost:8088`. See
+development. On the workstation, Jenkins is at `http://127.0.0.1:8080`,
+SonarQube at `http://127.0.0.1:9000`, and the app at `http://localhost:8088`.
+See
 [infrastructure/ansible/README.md](./infrastructure/ansible/README.md) for the
 VM workflow and [k8s/README.md](./k8s/README.md) for cluster details.
 

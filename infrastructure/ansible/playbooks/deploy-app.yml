@@ -124,7 +124,7 @@
           - rollout
           - status
           - statefulset/neo4j
-          - --timeout=360s
+          - --timeout=600s
       changed_when: false
 
     - name: Wait for PostgreSQL to become Ready

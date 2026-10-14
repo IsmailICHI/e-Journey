@@ -1,8 +1,9 @@
 # Jenkins and SonarQube
 
-The Ansible `ci` role starts this Compose project: Jenkins, SonarQube, and a
-dedicated PostgreSQL database for SonarQube. The app deployment is separate and
-uses the Ansible `k3s` role to reach the Vagrant VM.
+The Ansible `ci` role starts this Compose project on the k3s VM: Jenkins,
+SonarQube, and a dedicated PostgreSQL database. Jenkins and SonarQube share a
+private Compose network; the database is isolated on an internal network that
+Jenkins cannot join. The app runs in k3s on the same VM.
 
 ## Start everything
 
@@ -16,9 +17,11 @@ ANSIBLE_CONFIG=infrastructure/ansible/ansible.cfg ansible-playbook infrastructur
 ANSIBLE_CONFIG=infrastructure/ansible/ansible.cfg ansible-playbook infrastructure/ansible/playbooks/ci-platform.yml
 ```
 
-Jenkins is available at `http://127.0.0.1:8080`; SonarQube is at
-`http://127.0.0.1:9000`. The Ansible role waits for both services. Persistent
-Jenkins and SonarQube data live in named Compose volumes.
+From the workstation, Jenkins is available at `http://127.0.0.1:8080`,
+SonarQube at `http://127.0.0.1:9000`, and the app at `http://localhost:8088`.
+Vagrant forwards these ports on workstation loopback only. Ansible waits for
+Jenkins and additionally checks SonarQube from inside the Jenkins container.
+Persistent Jenkins and SonarQube data live in named Compose volumes.
 
 ## One-time Jenkins setup
 
@@ -39,15 +42,21 @@ the host `.env` into the Jenkins workspace immediately before deployment and
 removes that workspace copy in the pipeline's `always` cleanup. The `.env` is
 not copied into the Jenkins image or kept in its home volume.
 
-## Local-only security boundary
+## Communication and security boundary
 
-Jenkins uses host networking so it can reach Vagrant's SSH port forwarded to
-`127.0.0.1:2222` and SonarQube on `127.0.0.1:9000`. Jenkins itself binds only to
-host loopback. The container receives the host Docker socket and a read-only
-mount of the Vagrant private key; its entrypoint copies that key into a
-Jenkins-owned, mode-0600 runtime file. Docker socket access is effectively host
-administrator access. Do not expose this setup to untrusted users or use it as
-a production CI installation.
+Jenkins reaches SonarQube at `http://sonarqube:9000` over the Compose network;
+PostgreSQL has no published port and is isolated from Jenkins on an internal
+network. The pipeline reaches the VM SSH server through Docker's
+`host.docker.internal` gateway mapping. Ansible creates a dedicated Ed25519
+deploy key, authorizes only its public half for the `vagrant` account, and
+mounts the VM's SSH host key so Jenkins can verify the target. The app remains
+inside k3s and is published through Traefik.
+
+Vagrant binds all forwarded workstation ports to `127.0.0.1`. The Compose web
+ports are published inside the VM to serve those forwards; they are not
+published on the workstation's network interfaces. Jenkins still receives the
+VM Docker socket, which grants VM-level administrator access. Do not expose
+this development setup to untrusted users or use it as production CI.
 
 The Compose file supplies a learning-only fallback Sonar database password if
 `SONAR_DB_PASSWORD` is not present in `.env`. Set a unique value for persistent

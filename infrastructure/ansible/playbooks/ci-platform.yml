@@ -1,23 +1,15 @@
 ---
-- name: Start the local CI platform
-  hosts: localhost
-  connection: local
+- name: Start the CI platform on the k3s VM
+  hosts: k3s_server
+  become: true
   gather_facts: true
   vars:
-    ci_env_file: "{{ playbook_dir }}/../../../.env"
-    ci_k3s_key: "{{ playbook_dir }}/../../../.vagrant/machines/k3s-server/virtualbox/private_key"
-    ci_compose_file: "{{ playbook_dir }}/../../ci-platform/docker-compose.yaml"
-    ci_docker_socket_env: "{{ lookup('env', 'DOCKER_HOST') | regex_replace('^unix://', '') }}"
-    ci_docker_socket: >-
-      {{
-        ci_docker_socket_env
-        if (ci_docker_socket_env | length > 0)
-        else (
-          ('/run/user/' ~ ansible_user_uid ~ '/docker.sock')
-          if (query('fileglob', '/run/user/' ~ ansible_user_uid ~ '/docker.sock') | length > 0)
-          else '/var/run/docker.sock'
-        )
-      }}
-    ci_docker_host: "unix://{{ ci_docker_socket }}"
+    ci_env_source: "{{ playbook_dir }}/../../../.env"
+    ci_env_file: /opt/travelplan-ci/.env
+    ci_compose_file: /vagrant/infrastructure/ci-platform/docker-compose.yaml
+    ci_project_dir: /vagrant/infrastructure/ci-platform
+    ci_runtime_dir: /var/lib/travelplan-ci
+    ci_deploy_key: /var/lib/travelplan-ci/jenkins-deploy-key
+    ci_docker_socket: /var/run/docker.sock
   roles:
     - ci
