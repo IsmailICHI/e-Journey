@@ -8,7 +8,7 @@ pipeline {
     }
 
     environment {
-        SONAR_URL = 'http://127.0.0.1:9000'
+        SONAR_URL = 'http://sonarqube:9000'
         K8S_NAMESPACE = 'travel-plan'
         IMAGE_TAG = 'dev'
     }
@@ -18,6 +18,7 @@ pipeline {
             steps {
                 sh '''
                     set -eu
+                    docker version
                     test -f sonar-project.properties
                     test -f infrastructure/ansible/playbooks/deploy-ci.yml
                     test -f k8s/overlays/dev/kustomization.yaml
@@ -117,17 +118,21 @@ pipeline {
             steps {
                 sh '''
                     set -eu
-                    test -r /run/host-project.env
+                    test -r /run/jenkins-project.env
                     test -r /run/jenkins-k3s-key
-                    install -m 0600 /run/host-project.env .env
+                    install -m 0600 /run/jenkins-project.env .env
                     export ANSIBLE_CONFIG="$WORKSPACE/infrastructure/ansible/ansible.cfg"
                     export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
+                    export ANSIBLE_HOST_KEY_CHECKING=True
                     python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
                       ansible-playbook \
                       -i infrastructure/ansible/inventories/dev/hosts.yml \
                       infrastructure/ansible/playbooks/deploy-ci.yml \
                                             --extra-vars "deployment_source=$WORKSPACE \
                                                 ci_image_archive_dir=$WORKSPACE/.ci-images \
+                                                ansible_host=host.docker.internal \
+                                                ansible_port=22 \
+                                                ansible_user=vagrant \
                                                 ansible_ssh_private_key_file=/run/jenkins-k3s-key"
                 '''
             }
