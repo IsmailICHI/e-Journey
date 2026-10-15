@@ -141,19 +141,17 @@ pipeline {
                     export ANSIBLE_CONFIG="$WORKSPACE/infrastructure/ansible/ansible.cfg"
                     export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
                     export ANSIBLE_HOST_KEY_CHECKING=True
-                        
-
 
                     python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
-                      ansible-playbook \
-                      -i infrastructure/ansible/inventories/dev/hosts.yml \
-                      infrastructure/ansible/playbooks/deploy-ci.yml \
-                                            --extra-vars "deployment_source=$WORKSPACE \
-                                                ci_image_archive_dir=$WORKSPACE/.ci-images \
-                                                ansible_host=host.docker.internal \
-                                                ansible_port=22 \
-                                                ansible_user=vagrant \
-                                                ansible_ssh_private_key_file=/run/jenkins-k3s-key"
+                        ansible-playbook \
+                        -i infrastructure/ansible/inventories/dev/hosts.yml \
+                        infrastructure/ansible/playbooks/deploy-ci.yml \
+                        -e "deployment_source=${WORKSPACE}" \
+                        -e "ci_image_archive_dir=${WORKSPACE}/.ci-images" \
+                        -e "ansible_host=host.docker.internal" \
+                        -e "ansible_port=22" \
+                        -e "ansible_user=vagrant" \
+                        -e "ansible_ssh_private_key_file=/run/jenkins-k3s-key"
                 '''
                 }
             }
