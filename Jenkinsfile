@@ -121,11 +121,9 @@ pipeline {
             }
             steps {
                 withCredentials([file(credentialsId: 'travel-plan-env-file', variable: 'ENV_FILE')]) {
-                    sh 'cp "$ENV_FILE" .env'
-                }
-                sh '''
+                    sh '''
                     set -eu
-                    // cp "$ENV_FILE" .env
+                    cp "$ENV_FILE" .env
                     echo "================================================================================================"
                     echo "===============================.ENV HAS BEEN COPIED SUCCESSFULLY ==============================="
                     echo "================================================================================================"
@@ -150,6 +148,7 @@ pipeline {
                                                 ansible_user=vagrant \
                                                 ansible_ssh_private_key_file=/run/jenkins-k3s-key"
                 '''
+                }
             }
         }
     }
