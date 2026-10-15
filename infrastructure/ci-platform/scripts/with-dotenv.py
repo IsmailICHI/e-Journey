@@ -3,8 +3,8 @@
 
 import os
 import sys
+from pathlib import Path
 from dotenv import dotenv_values
-
 
 ALLOWED_KEYS = {
     "JWT_SECRET",
@@ -20,12 +20,28 @@ def main() -> None:
         raise SystemExit("usage: with-dotenv.py ENV_FILE COMMAND [ARGS...]")
 
     env_file, *command = sys.argv[1:]
-    parsed = dotenv_values(env_file)
+    env_path = Path(env_file).resolve()
+
+    if not env_path.is_file():
+        raise SystemExit(f"Environment file not found: {env_path}")
+
+    parsed = dotenv_values(env_path)
     environment = os.environ.copy()
-    for key in ALLOWED_KEYS:
+
+    print(f"===================Loading dotenv file: {env_path}", file=sys.stderr)
+
+    for key in sorted(ALLOWED_KEYS):
         value = parsed.get(key)
+
         if value is not None:
             environment[key] = value
+
+        status = (
+            "PRESENT"
+            if environment.get(key)
+            else "MISSING_OR_EMPTY"
+        )
+        print(f"=================== {key}:::::::::::::::::::::: {status}", file=sys.stderr)
 
     os.execvpe(command[0], command, environment)
 
