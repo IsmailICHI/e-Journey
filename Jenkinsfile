@@ -137,25 +137,12 @@ pipeline {
                     echo "===============================.ENV TEST 2 ==============================="
                     echo "================================================================================================"
                     cat /run/jenkins-project.env
+                    echo "================================================================================================"
                     export ANSIBLE_CONFIG="$WORKSPACE/infrastructure/ansible/ansible.cfg"
                     export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
                     export ANSIBLE_HOST_KEY_CHECKING=True
-                    
-                    echo "================================================================================================"
-                    python3 - <<'PY'
-                    from dotenv import dotenv_values
-                    from pathlib import Path
-                    
-                    path = Path(".env").resolve()
-                    values = dotenv_values(path)
-                    
-                    print("File:", path)
-                    print("File exists:", path.is_file())
-                    print("REDIS_PASSWORD key exists:", "REDIS_PASSWORD" in values)
-                    print("Parsed value is None:", values.get("REDIS_PASSWORD") is None)
-                    print("Parsed value is empty:", values.get("REDIS_PASSWORD") == "")
-                    print("Parsed value length:", len(values.get("REDIS_PASSWORD") or ""))
-                    PY
+                        
+
 
                     python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
                       ansible-playbook \
