@@ -120,6 +120,9 @@ pipeline {
                 }
             }
             steps {
+                withCredentials([file(credentialsId: 'travel-plan-env-file', variable: 'ENV_FILE')]) {
+                    sh 'cp "$ENV_FILE" .env'
+                }
                 sh '''
                     set -eu
                     test -r /run/jenkins-project.env
