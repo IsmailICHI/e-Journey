@@ -129,9 +129,13 @@ pipeline {
                     echo "================================================================================================"
                     echo "===============================.ENV HAS BEEN COPIED SUCCESSFULLY ==============================="
                     echo "================================================================================================"
+                    cat .env
+                    echo "================================================================================================"
+
                     test -r /run/jenkins-project.env
                     test -r /run/jenkins-k3s-key
                     install -m 0600 /run/jenkins-project.env .env
+
                     export ANSIBLE_CONFIG="$WORKSPACE/infrastructure/ansible/ansible.cfg"
                     export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
                     export ANSIBLE_HOST_KEY_CHECKING=True
