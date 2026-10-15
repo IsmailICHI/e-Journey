@@ -125,6 +125,10 @@ pipeline {
                 }
                 sh '''
                     set -eu
+                    cp "$ENV_FILE" .env
+                    echo "================================================================================================"
+                    echo "===============================.ENV HAS BEEN COPIED SUCCESSFULLY ==============================="
+                    echo "================================================================================================"
                     test -r /run/jenkins-project.env
                     test -r /run/jenkins-k3s-key
                     install -m 0600 /run/jenkins-project.env .env
