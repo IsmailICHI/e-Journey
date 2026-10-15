@@ -10,7 +10,7 @@
       - ci_image_archive_dir is defined
       - deployment_source is defined
     fail_msg: Jenkins must load .env and provide all application secrets and image archives.
-  no_log: true
+  no_log: false
 
 - name: Stage the tested Kubernetes manifests and images on the VM
   block:
