@@ -142,16 +142,25 @@ pipeline {
                     export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
                     export ANSIBLE_HOST_KEY_CHECKING=True
 
+                    python3 - "$WORKSPACE" "$WORKSPACE/.ci-images" <<'PY'
+                        import json, sys
+
+                        with open(".ci-extra-vars.json", "w") as f:
+                            json.dump({
+                                "deployment_source": sys.argv[1],
+                                "ci_image_archive_dir": sys.argv[2],
+                                "ansible_host": "host.docker.internal",
+                                "ansible_port": 22,
+                                "ansible_user": "vagrant",
+                                "ansible_ssh_private_key_file": "/run/jenkins-k3s-key"
+                            }, f)
+                        PY
+
                     python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
                         ansible-playbook \
                         -i infrastructure/ansible/inventories/dev/hosts.yml \
                         infrastructure/ansible/playbooks/deploy-ci.yml \
-                        -e "deployment_source=${WORKSPACE}" \
-                        -e "ci_image_archive_dir=${WORKSPACE}/.ci-images" \
-                        -e "ansible_host=host.docker.internal" \
-                        -e "ansible_port=22" \
-                        -e "ansible_user=vagrant" \
-                        -e "ansible_ssh_private_key_file=/run/jenkins-k3s-key"
+                        --extra-vars "@$WORKSPACE/.ci-extra-vars.json"
                 '''
                 }
             }
@@ -160,7 +169,8 @@ pipeline {
 
     post {
         always {
-            sh 'rm -f .env; rm -rf .ci-images .scannerwork'
+            // sh 'rm -f .env; rm -rf .ci-images .scannerwork'
+            sh 'rm -f .env .ci-extra-vars.json; rm -rf .ci-images .scannerwork'
             archiveArtifacts allowEmptyArchive: true, artifacts: 'travel-plan-rendered.yaml'
         }
         failure {
