@@ -142,11 +142,11 @@ pipeline {
                     export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
                     export ANSIBLE_HOST_KEY_CHECKING=True
 
-                    python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
-
                     echo "==================== .ENV =================="
                     cat .env
                     echo "==================== .ENV =================="
+                    
+                    python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
                     ansible-playbook \
                     -i infrastructure/ansible/inventories/dev/hosts.yml \
                     infrastructure/ansible/playbooks/deploy-ci.yml \
