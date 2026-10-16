@@ -48,18 +48,22 @@ logging:
     root: INFO
     com.travel.gateway: INFO
     org.springframework.cloud.gateway: INFO
+
 management:
   server:
     port: 8090
+
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+
   endpoint:
     health:
       show-details: never
       probes:
         enabled: true
+
   tracing:
     sampling:
       probability: 0.1

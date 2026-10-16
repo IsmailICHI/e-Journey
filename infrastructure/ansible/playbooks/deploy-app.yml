@@ -24,7 +24,7 @@
         dest: /tmp/travel-plan-secrets.yaml
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
       no_log: true
 
     - name: Apply the development Secret manifest
@@ -150,7 +150,7 @@
           - --
           - psql
           - -U
-          - postgres
+          - "{{lookup('env', 'POSTGRES_USER')}}"
           - -d
           - postgres
           - -tAc
