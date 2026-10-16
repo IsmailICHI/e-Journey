@@ -150,7 +150,7 @@
           - --
           - psql
           - -U
-          - postgres
+          - pgadmin
           - -d
           - postgres
           - -tAc
