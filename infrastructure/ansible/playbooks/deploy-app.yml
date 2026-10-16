@@ -150,11 +150,11 @@
           - --
           - psql
           - -U
-          - pgadmin
+          - postgres
           - -d
           - postgres
           - -tAc
-          - SELECT datname FROM pg_database
+          - "SELECT datname FROM pg_database"
       register: postgres_databases
       changed_when: false
 
