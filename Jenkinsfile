@@ -143,18 +143,17 @@ pipeline {
                     export ANSIBLE_HOST_KEY_CHECKING=True
 
                     python3 - "$WORKSPACE" "$WORKSPACE/.ci-images" <<'PY'
-                        import json, sys
-
-                        with open(".ci-extra-vars.json", "w") as f:
-                            json.dump({
-                                "deployment_source": sys.argv[1],
-                                "ci_image_archive_dir": sys.argv[2],
-                                "ansible_host": "host.docker.internal",
-                                "ansible_port": 22,
-                                "ansible_user": "vagrant",
-                                "ansible_ssh_private_key_file": "/run/jenkins-k3s-key"
-                            }, f)
-                        PY
+                    import json, sys
+                    with open(".ci-extra-vars.json", "w") as f:
+                        json.dump({
+                            "deployment_source": sys.argv[1],
+                            "ci_image_archive_dir": sys.argv[2],
+                            "ansible_host": "host.docker.internal",
+                            "ansible_port": 22,
+                            "ansible_user": "vagrant",
+                            "ansible_ssh_private_key_file": "/run/jenkins-k3s-key"
+                        }, f)
+                    PY
 
                     python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
                         ansible-playbook \
