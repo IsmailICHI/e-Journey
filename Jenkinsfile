@@ -144,6 +144,7 @@ pipeline {
 
                     python3 - "$WORKSPACE" "$WORKSPACE/.ci-images" <<'PY'
                     import json, sys
+                    
                     with open(".ci-extra-vars.json", "w") as f:
                         json.dump({
                             "deployment_source": sys.argv[1],
