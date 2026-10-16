@@ -123,20 +123,20 @@ pipeline {
                 withCredentials([file(credentialsId: 'travel-plan-env-file', variable: 'ENV_FILE')]) {
                     sh '''
                     set -eu
-                    cp "$ENV_FILE" .env
+                    install -m 0600 "$ENV_FILE" .env
                     echo "================================================================================================"
                     echo "===============================.ENV HAS BEEN COPIED SUCCESSFULLY ==============================="
                     echo "================================================================================================"
                     cat .env
                     echo "================================================================================================"
 
-                    test -r /run/jenkins-project.env
+                    test -r .env
                     test -r /run/jenkins-k3s-key
-                    install -m 0600 /run/jenkins-project.env .env
+                    
                     echo "================================================================================================"
                     echo "===============================.ENV TEST 2 ==============================="
                     echo "================================================================================================"
-                    cat /run/jenkins-project.env
+                    
                     echo "================================================================================================"
                     export ANSIBLE_CONFIG="$WORKSPACE/infrastructure/ansible/ansible.cfg"
                     export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
