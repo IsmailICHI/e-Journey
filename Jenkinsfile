@@ -142,26 +142,37 @@ pipeline {
                     export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
                     export ANSIBLE_HOST_KEY_CHECKING=True
 
-                    python3 - "$WORKSPACE" "$WORKSPACE/.ci-images" <<'PY'
-                    import json, sys
-                    
-                    with open(".ci-extra-vars.json", "w") as f:
-                        json.dump({
-                            "deployment_source": sys.argv[1],
-                            "ci_image_archive_dir": sys.argv[2],
-                            "ansible_host": "host.docker.internal",
-                            "ansible_port": 22,
-                            "ansible_user": "vagrant",
-                            "ansible_ssh_private_key_file": "/run/jenkins-k3s-key"
-                        }, f)
-                    PY
-
                     python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
-                        ansible-playbook \
-                        -i infrastructure/ansible/inventories/dev/hosts.yml \
-                        infrastructure/ansible/playbooks/deploy-ci.yml \
-                        --extra-vars "@$WORKSPACE/.ci-extra-vars.json"
+                    ansible-playbook \
+                    -i infrastructure/ansible/inventories/dev/hosts.yml \
+                    infrastructure/ansible/playbooks/deploy-ci.yml \
+                    --extra-vars "deployment_source=$WORKSPACE \
+                        ci_image_archive_dir=$WORKSPACE/.ci-images \
+                        ansible_host=host.docker.internal \
+                        ansible_port=22 \
+                        ansible_user=vagrant \
+                        ansible_ssh_private_key_file=/run/jenkins-k3s-key"
                 '''
+
+                    // python3 - "$WORKSPACE" "$WORKSPACE/.ci-images" <<'PY'
+                    // import json, sys
+
+                    // with open(".ci-extra-vars.json", "w") as f:
+                    //     json.dump({
+                    //         "deployment_source": sys.argv[1],
+                    //         "ci_image_archive_dir": sys.argv[2],
+                    //         "ansible_host": "host.docker.internal",
+                    //         "ansible_port": 22,
+                    //         "ansible_user": "vagrant",
+                    //         "ansible_ssh_private_key_file": "/run/jenkins-k3s-key"
+                    //     }, f)
+                    // PY
+
+                    // python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
+                    //     ansible-playbook \
+                    //     -i infrastructure/ansible/inventories/dev/hosts.yml \
+                    //     infrastructure/ansible/playbooks/deploy-ci.yml \
+                    //     --extra-vars "@$WORKSPACE/.ci-extra-vars.json"
                 }
             }
         }
