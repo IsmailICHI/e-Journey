@@ -150,7 +150,7 @@ pipeline {
                     ansible-playbook \
                     -i infrastructure/ansible/inventories/dev/hosts.yml \
                     infrastructure/ansible/playbooks/deploy-ci.yml \
-                        "deployment_source=$WORKSPACE \
+                        --extra-vars "deployment_source=$WORKSPACE \
                         ci_image_archive_dir=$WORKSPACE/.ci-images \
                         ansible_host=host.docker.internal \
                         ansible_port=22 \
