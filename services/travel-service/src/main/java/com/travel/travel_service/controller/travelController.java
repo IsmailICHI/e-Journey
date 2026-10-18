@@ -3,12 +3,15 @@ package com.travel.travel_service.controller;
 import com.travel.travel_service.dto.TravelRequest;
 import com.travel.travel_service.dto.TravelResponse;
 import com.travel.travel_service.dto.TravelPageResponse;
+import com.travel.travel_service.exceptions.ResourceNotFoundException;
 import com.travel.travel_service.services.TravelService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import java.net.URI;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/admin/travels")
 @PreAuthorize("hasRole('ADMIN')")
+@Validated
 public class travelController {
 
     private final TravelService travelService;
@@ -31,15 +35,17 @@ public class travelController {
     }
 
     @GetMapping
-    public TravelPageResponse listAll(@RequestParam(defaultValue = "0") int page) {
+    public TravelPageResponse listAll(
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "Page index must be 0 or greater") int page) {
         return travelService.getTravelPage(page);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TravelResponse> getById(@PathVariable Long id) {
-        return travelService.getTravel(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<TravelResponse> getById(
+            @PathVariable @Positive(message = "Travel ID must be a positive number") Long id) {
+        TravelResponse travel = travelService.getTravel(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Travel with ID " + id + " not found"));
+        return ResponseEntity.ok(travel);
     }
 
     @PostMapping
@@ -51,17 +57,18 @@ public class travelController {
 
     @PutMapping("/{id}")
     public ResponseEntity<TravelResponse> update(
-            @PathVariable Long id,
+            @PathVariable @Positive(message = "Travel ID must be a positive number") Long id,
             @Valid @RequestBody TravelRequest request) {
-        return travelService.updateTravel(id, request)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        TravelResponse updated = travelService.updateTravel(id, request)
+                .orElseThrow(() -> new ResourceNotFoundException("Travel with ID " + id + " not found"));
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(
+            @PathVariable @Positive(message = "Travel ID must be a positive number") Long id) {
         if (!travelService.deleteTravel(id)) {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Travel with ID " + id + " not found");
         }
         return ResponseEntity.noContent().build();
     }

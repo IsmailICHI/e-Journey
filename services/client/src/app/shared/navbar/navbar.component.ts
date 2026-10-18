@@ -1,7 +1,8 @@
-import { Component, Input, OnInit, inject } from '@angular/core';
+import { Component, HostListener, Input, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { FeedbackService } from '../../core/services/feedback.service';
 
 @Component({
   selector: 'app-navbar',
@@ -11,11 +12,21 @@ import { AuthService } from '../../core/services/auth.service';
 })
 export class NavbarComponent implements OnInit {
   @Input() activePage: 'home' | 'admin' | 'profile' | 'login' | 'register' = 'home';
+
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  readonly feedback = inject(FeedbackService);
+
   menuOpen = false;
+  scrolled = false;
+
+  @HostListener('window:scroll')
+  onScroll(): void {
+    this.scrolled = window.scrollY > 8;
+  }
 
   ngOnInit(): void {
+    this.scrolled = window.scrollY > 8;
     if (this.authService.token && this.authService.isLoggedIn) {
       this.authService.verifySession().subscribe({ error: () => undefined });
     } else if (this.authService.token) {
@@ -43,5 +54,10 @@ export class NavbarComponent implements OnInit {
     this.authService.logout();
     this.closeMenu();
     void this.router.navigateByUrl('/home');
+  }
+
+  openFeedbackLog(): void {
+    this.closeMenu();
+    this.feedback.openLog();
   }
 }

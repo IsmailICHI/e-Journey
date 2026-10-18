@@ -17,10 +17,13 @@ export const errorInterceptor: HttpInterceptorFn = (request, next) => {
       if (error instanceof HttpErrorResponse && !isAuthRequest) {
         if (error.status === 401) {
           auth.logout();
+          if (!isSessionVerification) {
+            void router.navigate(['/login']);
+          }
         }
-        if (error.status >= 400 && (!isSessionVerification || error.status !== 401)) {
-          void router.navigate(['/error', error.status]);
-        } else if (error.status === 0) {
+        // Never navigate away on 400 Bad Request, 403, 404, 409, 422, 429
+        // Allow the component and feedback dialog system to show rich in-place feedback!
+        if ((error.status === 0 || error.status === 503) && request.method === 'GET' && !isSessionVerification) {
           void router.navigate(['/error', 503]);
         }
       }

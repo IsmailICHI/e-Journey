@@ -3,6 +3,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { getApiErrorMessage } from '../../core/interceptors/api-error';
 import { AuthService } from '../../core/services/auth.service';
+import { FeedbackService } from '../../core/services/feedback.service';
 import { TravelService } from '../../core/services/travel.service';
 import { UserService } from '../../core/services/user.service';
 import { NavbarComponent } from '../../shared/navbar/navbar.component';
@@ -18,6 +19,7 @@ export class ProfileComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly travelService = inject(TravelService);
   private readonly userService = inject(UserService);
+  private readonly feedback = inject(FeedbackService);
 
   readonly email = this.authService.email;
   readonly role = this.authService.role;
@@ -39,6 +41,7 @@ export class ProfileComponent implements OnInit {
       },
       error: (error: unknown) => {
         this.profileErrorMessage = getApiErrorMessage(error);
+        this.feedback.showFromApiError(error, 'Profile Load Issue');
         this.loadingProfile = false;
       }
     });
@@ -57,6 +60,7 @@ export class ProfileComponent implements OnInit {
         },
         error: (error: unknown) => {
           this.statisticsErrorMessage = getApiErrorMessage(error);
+          this.feedback.showFromApiError(error, 'Statistics Load Issue');
           this.loadingStatistics = false;
         }
       });

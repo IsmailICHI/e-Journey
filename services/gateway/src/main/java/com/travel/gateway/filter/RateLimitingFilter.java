@@ -30,8 +30,6 @@ public class RateLimitingFilter implements GlobalFilter, Ordered {
             "/api/v1/auth/register",
             "/api/v1/places/public");
 
-    // private static final String PUBLIC_RATING_SUMMARY =
-    // "/api/v1/ratings/summaries";
 
     private final ProxyManager<String> proxyManager;
 
@@ -63,11 +61,14 @@ public class RateLimitingFilter implements GlobalFilter, Ordered {
                         return chain.filter(exchange);
                     }
                     exchange.getResponse().setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                    exchange.getResponse().getHeaders().setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
                     long retryAfterSeconds = Math.max(1,
                             Duration.ofNanos(probe.getNanosToWaitForRefill()).toSeconds());
                     exchange.getResponse().getHeaders().set(HttpHeaders.RETRY_AFTER,
                             Long.toString(retryAfterSeconds));
-                    return exchange.getResponse().setComplete();
+                    String path1 = exchange.getRequest().getURI().getPath();
+                    byte[] body = ("{\"timestamp\":\"" + java.time.Instant.now() + "\",\"status\":429,\"error\":\"Too Many Requests\",\"message\":\"Too many requests right now. Please wait " + retryAfterSeconds + " second(s).\",\"errorMessage\":\"Too many requests right now. Please wait " + retryAfterSeconds + " second(s).\",\"path\":\"" + path1 + "\"}").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                    return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(body)));
                 });
     }
 

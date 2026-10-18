@@ -123,6 +123,31 @@ class UserServiceApplicationTests {
 		}
 	}
 
+	@Test
+	void invalidRegistrationReturnsSpecifiedBadRequestWithValidationErrors() throws Exception {
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/auth/register")
+				.contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"invalid-email\",\"fullName\":\"A\",\"password\":\"123\"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.status").value(400))
+				.andExpect(jsonPath("$.error").value("Bad Request"))
+				.andExpect(jsonPath("$.validationErrors.email").exists())
+				.andExpect(jsonPath("$.validationErrors.fullName").exists())
+				.andExpect(jsonPath("$.validationErrors.password").exists());
+	}
+
+	@Test
+	void invalidLoginReturnsSpecifiedBadRequestWithValidationErrors() throws Exception {
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/auth/login")
+				.contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"\",\"password\":\"\"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.status").value(400))
+				.andExpect(jsonPath("$.error").value("Bad Request"))
+				.andExpect(jsonPath("$.validationErrors.email").exists())
+				.andExpect(jsonPath("$.validationErrors.password").exists());
+	}
+
 	private String tokenFor(Role role) {
 		User user = new User();
 		user.setId(1L);

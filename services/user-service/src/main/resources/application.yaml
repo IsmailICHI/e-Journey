@@ -28,20 +28,12 @@ jwt:
   expiration: ${JWT_EXPIRATION:3600000}
 
 management:
-  server:
-    port: 8090
-
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
-
+        include: health,info
   endpoint:
     health:
-      show-details: never
       probes:
         enabled: true
-
-  tracing:
-    sampling:
-      probability: 0.1
+      show-details: never

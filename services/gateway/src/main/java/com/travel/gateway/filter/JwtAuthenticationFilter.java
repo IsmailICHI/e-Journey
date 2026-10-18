@@ -106,8 +106,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private Mono<Void> reject(ServerWebExchange exchange, HttpStatus status, String message) {
         exchange.getResponse().setStatusCode(status);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        byte[] body = ("{\"status\":" + status.value() + ",\"error\":\"" + status.getReasonPhrase()
-                + "\",\"message\":\"" + message + "\"}").getBytes(StandardCharsets.UTF_8);
+        String path = exchange.getRequest().getURI().getPath();
+        byte[] body = ("{\"timestamp\":\"" + java.time.Instant.now() + "\",\"status\":" + status.value()
+                + ",\"error\":\"" + status.getReasonPhrase()
+                + "\",\"message\":\"" + message
+                + "\",\"errorMessage\":\"" + message
+                + "\",\"path\":\"" + path + "\"}").getBytes(StandardCharsets.UTF_8);
         return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(body)));
     }
 

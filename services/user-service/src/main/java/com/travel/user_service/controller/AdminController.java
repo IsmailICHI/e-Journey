@@ -1,9 +1,7 @@
 package com.travel.user_service.controller;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,12 +10,15 @@ import org.springframework.web.bind.annotation.*;
 import com.travel.user_service.dto.admin.*;
 import com.travel.user_service.services.UserService;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 @Data
 @RestController
 @RequestMapping("/api/v1/admin")
 @PreAuthorize("hasRole('ADMIN')")
+@Validated
 public class AdminController {
 
     private final UserService userService;
@@ -25,7 +26,7 @@ public class AdminController {
     @GetMapping("/users")
     public UserPageResponse getAllUsers(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestParam(defaultValue = "0") int page) {
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "Page index must be 0 or greater") int page) {
         return userService.getAllUsers(jwt.getSubject(), page);
     }
 
@@ -36,7 +37,9 @@ public class AdminController {
 
     @DeleteMapping("/users/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteUser(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+    public void deleteUser(
+            @PathVariable @Positive(message = "User ID must be a positive number") Long id,
+            @AuthenticationPrincipal Jwt jwt) {
         if (userService.isSelf(id, jwt.getSubject())) {
             throw new AccessDeniedException("Administrators cannot delete their own account");
         }

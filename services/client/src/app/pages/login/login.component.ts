@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { FeedbackService } from '../../core/services/feedback.service';
 import { getApiErrorMessage } from '../../core/interceptors/api-error';
 import { NavbarComponent } from '../../shared/navbar/navbar.component';
 
@@ -16,6 +17,7 @@ export class LoginComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly authService = inject(AuthService);
+  private readonly feedback = inject(FeedbackService);
   email = '';
   password = '';
   errorMessage = '';
@@ -30,6 +32,7 @@ export class LoginComponent {
     this.authService.login({ email: this.email, password: this.password }).subscribe({
       next: (response) => {
         this.submitting = false;
+        this.feedback.showSuccess('Welcome back! Signed in successfully.', 'Sign In Successful');
         const requestedPath = this.route.snapshot.queryParamMap.get('returnUrl');
         const returnUrl = requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
           ? requestedPath
@@ -41,6 +44,7 @@ export class LoginComponent {
       error: (error: unknown) => {
         this.submitting = false;
         this.errorMessage = getApiErrorMessage(error);
+        this.feedback.showFromApiError(error, 'Sign In Failed');
       }
     });
   }
