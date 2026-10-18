@@ -1,4 +1,4 @@
-package com.travel.travel_service.model;
+package com.travel.travel_service.models;
 
 import jakarta.persistence.*;
 import lombok.*;

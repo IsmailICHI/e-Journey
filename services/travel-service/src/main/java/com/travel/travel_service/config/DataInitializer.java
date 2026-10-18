@@ -1,7 +1,7 @@
 package com.travel.travel_service.config;
 
-import com.travel.travel_service.model.ItineraryEntity;
-import com.travel.travel_service.model.TravelEntity;
+import com.travel.travel_service.models.ItineraryEntity;
+import com.travel.travel_service.models.TravelEntity;
 import com.travel.travel_service.repository.TravelRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;

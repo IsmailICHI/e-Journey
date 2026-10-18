@@ -14,10 +14,11 @@ import com.travel.travel_service.dto.ItineraryRequest;
 import com.travel.travel_service.dto.TravelPageResponse;
 import com.travel.travel_service.dto.TravelRequest;
 import com.travel.travel_service.dto.TravelResponse;
-import com.travel.travel_service.model.ItineraryEntity;
-import com.travel.travel_service.model.TravelEntity;
 import com.travel.travel_service.repository.TravelRepository;
 import com.travel.travel_service.exceptions.BadRequestException;
+import com.travel.travel_service.models.ItineraryEntity;
+import com.travel.travel_service.models.TravelEntity;
+
 import org.springframework.transaction.annotation.Transactional;
 
 @Service

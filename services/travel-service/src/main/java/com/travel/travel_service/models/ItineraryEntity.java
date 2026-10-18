@@ -1,4 +1,4 @@
-package com.travel.travel_service.model;
+package com.travel.travel_service.models;
 
 import java.util.ArrayList;
 import java.util.List;
