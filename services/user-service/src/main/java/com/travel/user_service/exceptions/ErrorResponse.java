@@ -14,9 +14,9 @@ public record ErrorResponse(
         String path,
         Map<String, String> validationErrors
 ) {
-    public ErrorResponse(String errorMessage) {
-        this(Instant.now(), 400, "Bad Request", errorMessage, null, null);
-    }
+    // public ErrorResponse(String errorMessage) {
+    //     this(Instant.now(), 400, "Bad Request", errorMessage, null, null);
+    // }
 
     public ErrorResponse(int status, String error, String message, String path) {
         this(Instant.now(), status, error, message, path, null);
