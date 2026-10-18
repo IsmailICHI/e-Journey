@@ -30,21 +30,21 @@ pipeline {
             }
         }
 
-        // stage('Test backend services') {
-        //     steps {
-        //         sh '''
-        //             set -eu
-        //             for service in gateway user-service travel-service; do
-        //                 mvn -B -f "services/$service/pom.xml" clean verify
-        //             done
-        //         '''
-        //     }
-        //     post {
-        //         always {
-        //             junit allowEmptyResults: true, testResults: 'services/*/target/surefire-reports/*.xml'
-        //         }
-        //     }
-        // }
+        stage('Test backend services') {
+            steps {
+                sh '''
+                    set -eu
+                    for service in gateway user-service travel-service; do
+                        mvn -B -f "services/$service/pom.xml" clean verify
+                    done
+                '''
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'services/*/target/surefire-reports/*.xml'
+                }
+            }
+        }
 
         stage('Build application images') {
             steps {
@@ -67,49 +67,49 @@ pipeline {
             }
         }
 
-        // stage('SonarQube analysis and quality gate') {
-        //     steps {
-        //         withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-        //             sh '''
-        //                 set +x
-        //                 sonar-scanner \\
-        //                   -Dproject.settings=sonar-project.properties \\
-        //                   -Dsonar.host.url="$SONAR_URL" \\
-        //                   -Dsonar.token="$SONAR_TOKEN"
-        //             '''
-        //             sh '''
-        //                 set +x
-        //                 set -eu
-        //                 task_url="$(sed -n 's/^ceTaskUrl=//p' .scannerwork/report-task.txt)"
-        //                 test -n "$task_url"
-        //                 analysis_id=
-        //                 task_status=
-        //                 for attempt in $(seq 1 36); do
-        //                     task_json="$(curl --fail --silent --show-error --user "$SONAR_TOKEN:" "$task_url")"
-        //                     task_status="$(printf '%s' "$task_json" | jq -r '.task.status')"
-        //                     analysis_id="$(printf '%s' "$task_json" | jq -r '.task.analysisId // empty')"
-        //                     if [ "$task_status" = SUCCESS ]; then
-        //                         break
-        //                     fi
-        //                     if [ "$task_status" = FAILED ] || [ "$task_status" = CANCELED ]; then
-        //                         echo "SonarQube background task ended with status: $task_status" >&2
-        //                         exit 1
-        //                     fi
-        //                     sleep 5
-        //                 done
-        //                 test "$task_status" = SUCCESS
-        //                 test -n "$analysis_id"
-        //                 gate_json="$(curl --fail --silent --show-error --user "$SONAR_TOKEN:" \
-        //                   "$SONAR_URL/api/qualitygates/project_status?analysisId=$analysis_id")"
-        //                 gate_status="$(printf '%s' "$gate_json" | jq -r '.projectStatus.status')"
-        //                 if [ "$gate_status" != OK ]; then
-        //                     echo "SonarQube quality gate failed: $gate_status" >&2
-        //                     exit 1
-        //                 fi
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('SonarQube analysis and quality gate') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        set +x
+                        sonar-scanner \\
+                          -Dproject.settings=sonar-project.properties \\
+                          -Dsonar.host.url="$SONAR_URL" \\
+                          -Dsonar.token="$SONAR_TOKEN"
+                    '''
+                    sh '''
+                        set +x
+                        set -eu
+                        task_url="$(sed -n 's/^ceTaskUrl=//p' .scannerwork/report-task.txt)"
+                        test -n "$task_url"
+                        analysis_id=
+                        task_status=
+                        for attempt in $(seq 1 36); do
+                            task_json="$(curl --fail --silent --show-error --user "$SONAR_TOKEN:" "$task_url")"
+                            task_status="$(printf '%s' "$task_json" | jq -r '.task.status')"
+                            analysis_id="$(printf '%s' "$task_json" | jq -r '.task.analysisId // empty')"
+                            if [ "$task_status" = SUCCESS ]; then
+                                break
+                            fi
+                            if [ "$task_status" = FAILED ] || [ "$task_status" = CANCELED ]; then
+                                echo "SonarQube background task ended with status: $task_status" >&2
+                                exit 1
+                            fi
+                            sleep 5
+                        done
+                        test "$task_status" = SUCCESS
+                        test -n "$analysis_id"
+                        gate_json="$(curl --fail --silent --show-error --user "$SONAR_TOKEN:" \
+                          "$SONAR_URL/api/qualitygates/project_status?analysisId=$analysis_id")"
+                        gate_status="$(printf '%s' "$gate_json" | jq -r '.projectStatus.status')"
+                        if [ "$gate_status" != OK ]; then
+                            echo "SonarQube quality gate failed: $gate_status" >&2
+                            exit 1
+                        fi
+                    '''
+                }
+            }
+        }
 
         stage('Deploy to k3s VM') {
             when {
@@ -127,24 +127,13 @@ pipeline {
                     echo "================================================================================================"
                     echo "===============================.ENV HAS BEEN COPIED SUCCESSFULLY ==============================="
                     echo "================================================================================================"
-                    cat .env
-                    echo "================================================================================================"
 
                     test -r .env
                     test -r /run/jenkins-k3s-key
-                    
-                    echo "================================================================================================"
-                    echo "===============================.ENV TEST 2 ==============================="
-                    echo "================================================================================================"
-                    
-                    echo "================================================================================================"
+
                     export ANSIBLE_CONFIG="$WORKSPACE/infrastructure/ansible/ansible.cfg"
                     export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
                     export ANSIBLE_HOST_KEY_CHECKING=True
-
-                    echo "==================== .ENV =================="
-                    cat .env
-                    echo "==================== .ENV =================="
 
                     python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
                     ansible-playbook \
@@ -157,26 +146,6 @@ pipeline {
                         ansible_user=vagrant \
                         ansible_ssh_private_key_file=/run/jenkins-k3s-key"
                 '''
-
-                    // python3 - "$WORKSPACE" "$WORKSPACE/.ci-images" <<'PY'
-                    // import json, sys
-
-                    // with open(".ci-extra-vars.json", "w") as f:
-                    //     json.dump({
-                    //         "deployment_source": sys.argv[1],
-                    //         "ci_image_archive_dir": sys.argv[2],
-                    //         "ansible_host": "host.docker.internal",
-                    //         "ansible_port": 22,
-                    //         "ansible_user": "vagrant",
-                    //         "ansible_ssh_private_key_file": "/run/jenkins-k3s-key"
-                    //     }, f)
-                    // PY
-
-                    // python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
-                    //     ansible-playbook \
-                    //     -i infrastructure/ansible/inventories/dev/hosts.yml \
-                    //     infrastructure/ansible/playbooks/deploy-ci.yml \
-                    //     --extra-vars "@$WORKSPACE/.ci-extra-vars.json"
                 }
             }
         }
