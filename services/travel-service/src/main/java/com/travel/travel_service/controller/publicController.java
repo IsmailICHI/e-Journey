@@ -7,11 +7,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.travel.travel_service.services.TravelService;
 
-import lombok.Data;
+import lombok.RequiredArgsConstructor;
 
-@Data
+// import lombok.;
+
 @RestController
 @RequestMapping("/api/v1/places")
+@RequiredArgsConstructor 
+
+
 public class publicController {
 
     // private final TravelRepository travelRepo;
