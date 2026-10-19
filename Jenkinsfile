@@ -37,7 +37,7 @@ pipeline {
                             sh '''
                     echo "====================== Start testing the forntend ======================"
                     npm install
-                    ng test --watch=false --browsers=ChromeHeadless
+                    npm test --watch=false --browsers=ChromeHeadless
                     '''
                         }
                     }
