@@ -8,7 +8,7 @@ module.exports = function (config) {
       require('karma-chrome-launcher'),
       require('karma-jasmine-html-reporter'),
       require('karma-coverage'),
-      require('@angular-devkit/build-angular/plugins/karma')
+      require('@angular/build/plugins/karma')
     ],
     client: {
       jasmine: {
@@ -17,11 +17,11 @@ module.exports = function (config) {
       clearContext: false // leave Jasmine Spec Runner output visible in browser
     },
     customLaunchers: {
-  ChromeHeadlessNoSandbox: {
-    base: 'ChromeHeadless',
-    flags: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-  }
-},
+      ChromeHeadlessNoSandbox: {
+        base: 'ChromeHeadless',
+        flags: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      }
+    },
     jasmineHtmlReporter: {
       suppressAll: true // removes duplicated traces
     },
