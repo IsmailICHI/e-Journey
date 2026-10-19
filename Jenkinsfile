@@ -36,10 +36,6 @@ pipeline {
                         dir('services/client/') {
                             sh '''
                     echo "====================== Start testing the forntend ======================"
-                    echo "$CHROME_BIN"
-                    "$CHROME_BIN" --version
-                    echo "====================== Check versionning ======================"
-                    
                     
                     npm install
                     npm test --watch=false --browsers=ChromeHeadless
