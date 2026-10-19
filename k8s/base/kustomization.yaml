@@ -14,6 +14,10 @@ resources:
   - deployment/redis.deployment.yaml
   - deployment/travel.deployment.yaml
   - deployment/user.deployment.yaml
+  - deployment/prometheus.deployment.yaml
+  - deployment/grafana.deployment.yaml
+  - services/prometheus.service.yaml
+  - services/grafana.service.yaml
   - services/frontend.service.yaml
   - services/gateway.service.yaml
   - services/redis.service.yaml
