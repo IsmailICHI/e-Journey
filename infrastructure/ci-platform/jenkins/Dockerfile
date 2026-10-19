@@ -43,11 +43,23 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
 
 # Wrapper lets Karma launch Chromium with container-compatible flags.
-RUN printf '%s\n' \
-    '#!/bin/sh' \
-    'exec /usr/bin/chromium --no-sandbox --disable-dev-shm-usage "$@"' \
-    > /usr/local/bin/chromium-headless \
-    && chmod 0755 /usr/local/bin/chromium-headless
+# RUN printf '%s\n' \
+#     '#!/bin/sh' \
+#     'exec /usr/bin/chromium --no-sandbox --disable-dev-shm-usage "$@"' \
+#     > /usr/local/bin/chromium-headless \
+#     && chmod 0755 /usr/local/bin/chromium-headless
+
+# ENV CHROME_BIN=/usr/local/bin/chromium-headless
+
+# Configure Chromium for headless Angular/Karma tests
+RUN set -eux; \
+    test -x /usr/bin/chromium; \
+    printf '%s\n' \
+      '#!/bin/sh' \
+      'exec /usr/bin/chromium --no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage "$@"' \
+      > /usr/local/bin/chromium-headless; \
+    chmod 0755 /usr/local/bin/chromium-headless; \
+    test -s /usr/local/bin/chromium-headless
 
 ENV CHROME_BIN=/usr/local/bin/chromium-headless
 
