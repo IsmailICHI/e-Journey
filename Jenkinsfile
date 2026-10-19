@@ -33,8 +33,8 @@ pipeline {
             parallel {
                 stage('Test frontend') {
                     steps {
-                        dir('services/client')
-                        sh '''
+                        dir('services/client') {
+                            sh '''
                             set -eu
 
                             echo "=== Node and npm ==="
@@ -50,6 +50,7 @@ pipeline {
                             echo "=== Run Angular tests ==="
                             npx ng test --watch=false --browsers=ChromeHeadlessNoSandbox
                     '''
+                        }
                     }
                 }
 
