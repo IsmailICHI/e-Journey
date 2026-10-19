@@ -29,7 +29,7 @@ pipeline {
                 '''
             }
         }
-        stage {
+        stage("Parallel test") {
             parallel {
                 stage('Test frontend') {
                     steps {
