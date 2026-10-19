@@ -26,6 +26,7 @@ resources:
   - hpa/gateway.hpa.yaml
   - hpa/travel.hpa.yaml
   - hpa/user.hpa.yaml
+  - monitoring/prometheus-config.yaml
 commonLabels:
   app.kubernetes.io/part-of: travel-plan
   app.kubernetes.io/managed-by: kustomize
