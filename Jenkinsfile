@@ -30,18 +30,28 @@ pipeline {
             }
         }
 
-        stage('Test backend services') {
-            steps {
+        parallel {
+            stage('Test frontend') {
                 sh '''
+                    echo "====================== Start testing the forntend ======================"
+                    npm ci
+                    npm test
+                '''
+            }
+
+            stage('Test backend services') {
+                steps {
+                    sh '''
                     set -eu
                     for service in gateway user-service travel-service; do
                         mvn -B -f "services/$service/pom.xml" clean verify
                     done
                 '''
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'services/*/target/surefire-reports/*.xml'
+                }
+                post {
+                    always {
+                        junit allowEmptyResults: true, testResults: 'services/*/target/surefire-reports/*.xml'
+                    }
                 }
             }
         }
