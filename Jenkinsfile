@@ -35,7 +35,7 @@ pipeline {
                     steps {
                         sh '''
                     echo "====================== Start testing the forntend ======================"
-                    npm ci
+                    npm install
                     npm test
                     '''
                     }
