@@ -19,7 +19,7 @@ with a locally installed PostgreSQL server on port 5432. Override
 On first startup, PostgreSQL creates `user_db` and `travel_db` in addition to
 the database named by `POSTGRES_DB`. The application database initialization
 script only runs when the PostgreSQL data volume is first created.
-
+//
 Open four PowerShell terminals from the repository root.
 
 **User service** (set these values from `.env` first):
