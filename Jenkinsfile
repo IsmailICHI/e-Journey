@@ -48,7 +48,7 @@ pipeline {
                             npm ci
 
                             echo "=== Run Angular tests ==="
-                            npx ng test --watch=false --browsers=ChromeHeadlessNoSandbox
+                            npm test --watch=false --code-coverage --browsers=ChromeHeadlessNoSandbox
                     '''
                         }
                     }
