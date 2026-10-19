@@ -33,11 +33,13 @@ pipeline {
             parallel {
                 stage('Test frontend') {
                     steps {
-                        sh '''
+                        dir('services/client/') {
+                            sh '''
                     echo "====================== Start testing the forntend ======================"
                     npm install
                     npm test
                     '''
+                        }
                     }
                 }
 
