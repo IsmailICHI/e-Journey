@@ -39,8 +39,8 @@ pipeline {
                     echo "$CHROME_BIN"
                     "$CHROME_BIN" --version
                     echo "====================== Check versionning ======================"
-                    node --version
-                    npm --version
+                    
+                    
                     npm install
                     npm test --watch=false --browsers=ChromeHeadless
                     '''
