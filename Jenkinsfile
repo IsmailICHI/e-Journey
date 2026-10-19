@@ -35,7 +35,7 @@ pipeline {
                     steps {
                         sh '''
                     echo "====================== Install NPM ======================"
-                    sudo apt install nodejs npm
+                    apt-get install nodejs npm
                     echo "====================== Start testing the forntend ======================"
                     npm ci
                     npm test
