@@ -33,19 +33,20 @@ pipeline {
             parallel {
                 stage('Test frontend') {
                     steps {
+                        dir('services/client')
                         sh '''
                             set -eu
-                
+
                             echo "=== Node and npm ==="
                             node --version
                             npm --version
-                
+
                             echo "=== Chromium ==="
                             "$CHROME_BIN" --version
-                
+
                             echo "=== Install dependencies ==="
                             npm ci
-                
+
                             echo "=== Run Angular tests ==="
                             npx ng test --watch=false --browsers=ChromeHeadlessNoSandbox
                     '''
