@@ -41,9 +41,6 @@ pipeline {
                             node --version
                             npm --version
 
-                            echo "=== Chromium ==="
-                            "$CHROME_BIN" --version
-
                             echo "=== Install dependencies ==="
                             npm ci
 
