@@ -43,9 +43,10 @@ pipeline {
 
                             echo "=== Install dependencies ==="
                             npm ci
-
+                            echo "=========CHROME_BIN=$CHROME_BIN"
+                            "$CHROME_BIN" --version
                             echo "=== Run Angular tests ==="
-                            npm test --watch=false --code-coverage --browsers=ChromeHeadlessNoSandbox
+                            npx ng test --watch=false --code-coverage --browsers=ChromeHeadlessNoSandbox
                     '''
                         }
                     }
