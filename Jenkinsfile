@@ -34,8 +34,6 @@ pipeline {
                 stage('Test frontend') {
                     steps {
                         sh '''
-                    echo "====================== Install NPM ======================"
-                    apt-get install nodejs npm
                     echo "====================== Start testing the forntend ======================"
                     npm ci
                     npm test
