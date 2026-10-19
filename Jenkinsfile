@@ -29,11 +29,13 @@ pipeline {
                 '''
             }
         }
-        stage("Parallel test") {
+        stage('Parallel test') {
             parallel {
                 stage('Test frontend') {
                     steps {
                         sh '''
+                    echo "====================== Install NPM ======================"
+                    sudo apt install nodejs npm
                     echo "====================== Start testing the forntend ======================"
                     npm ci
                     npm test
