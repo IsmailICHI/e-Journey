@@ -13,5 +13,7 @@ spec:
   ports:
     - name: http
       port: 8089
-      targetPort: http
----
+      targetPort: 8089
+    - name: management
+      port: 8090
+      targetPort: 8090

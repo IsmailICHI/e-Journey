@@ -150,7 +150,7 @@
           - --
           - psql
           - -U
-          - "{{lookup('env', 'POSTGRES_USER')}}"
+          - "{{ lookup('env', 'POSTGRES_USER') | default('postgres', true) }}"
           - -d
           - postgres
           - -tAc
@@ -169,7 +169,7 @@
           - --
           - psql
           - -U
-          - postgres
+          - "{{ lookup('env', 'POSTGRES_USER') | default('postgres', true) }}"
           - -d
           - postgres
           - -c
