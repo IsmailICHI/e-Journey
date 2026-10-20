@@ -19,14 +19,14 @@ patches:
     patch: |-
       - op: replace
         path: /metadata/annotations/traefik.ingress.kubernetes.io~1router.entrypoints
-        value: web
+        value: websecure
   - target:
       kind: Ingress
       name: travel-plan
     patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: localhost
+        value: travel-plan.local
   - target:
       kind: HorizontalPodAutoscaler
       name: gateway
@@ -63,4 +63,4 @@ patches:
               - name: gateway
                 env:
                   - name: CORS_ALLOWED_ORIGINS
-                    value: http://localhost:8088
+                    value: https://travel-plan.local:8443

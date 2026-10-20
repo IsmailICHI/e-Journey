@@ -7,9 +7,13 @@ metadata:
     app.kubernetes.io/name: travel-plan-ingress
     app.kubernetes.io/component: ingress
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - travel-plan.local
+      secretName: travel-plan-local-tls
   rules:
     - host: travel-plan.local
       http:
@@ -28,8 +32,3 @@ spec:
                 name: frontend
                 port:
                   number: 80
-# HTTPS can be enabled by creating a secret such as travel-plan-local-tls and adding:
-# tls:
-#   - hosts:
-#       - travel-plan.local
-#     secretName: travel-plan-local-tls
