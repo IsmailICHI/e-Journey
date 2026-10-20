@@ -12,6 +12,6 @@ data:
         metrics_path: '/actuator/prometheus'
         static_configs:
           - targets:
-              - 'gateway.travel-plan.svc.cluster.local:8089'
+              - 'gateway.travel-plan.svc.cluster.local:8090'
               - 'user-service.travel-plan.svc.cluster.local:8081'
               - 'travel-service.travel-plan.svc.cluster.local:8082'
