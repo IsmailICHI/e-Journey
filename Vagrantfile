@@ -16,6 +16,8 @@ Vagrant.configure("2") do |config|
       host_ip: "127.0.0.1"
     server.vm.network "forwarded_port", guest: 30030, host: 30030,
       host_ip: "127.0.0.1"
+    server.vm.network "forwarded_port", guest: 30090, host: 30090,
+      host_ip: "127.0.0.1"
     server.vm.provider "virtualbox" do |vb|
       vb.memory = ENV.fetch("K3S_VM_MEMORY", "4096")
       vb.cpus = ENV.fetch("K3S_VM_CPUS", "2")
