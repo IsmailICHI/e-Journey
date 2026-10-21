@@ -41,7 +41,6 @@ public class UserService {
         admin.setState(true);
 
         return userRepository.save(admin);
-
     }
 
     public UserPageResponse getAllUsers(String currentEmail, int page) {
