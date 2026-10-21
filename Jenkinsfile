@@ -140,7 +140,7 @@ pipeline {
                 beforeAgent true
                 expression {
                     def branch = env.BRANCH_NAME ?: env.GIT_BRANCH
-                    return branch == 'monitoring' || branch == 'origin/monitoring'
+                    return branch == 'https-feature' || branch == 'origin/https-feature'
                 }
             }
             steps {
