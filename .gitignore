@@ -3,3 +3,4 @@
 .vagrant/
 **/target/**
 .env
+**/.env
