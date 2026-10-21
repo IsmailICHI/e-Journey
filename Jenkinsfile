@@ -47,6 +47,9 @@ pipeline {
                             "$CHROME_BIN" --version
                             echo "=== Run Angular tests ==="
                             npx ng test --watch=false --code-coverage --browsers=ChromeHeadlessNoSandbox
+                            test -s coverage/client/lcov.info
+                            sed -i 's|^SF:src/|SF:services/client/src/|' coverage/client/lcov.info
+                            grep -q '^SF:services/client/src/' coverage/client/lcov.info
                     '''
                         }
                     }

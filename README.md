@@ -205,8 +205,12 @@ Build and test the Angular client:
 ```powershell
 npm.cmd --prefix services/client ci
 npm.cmd --prefix services/client run build
-npm.cmd --prefix services/client test -- --watch=false
+npm.cmd --prefix services/client test -- --watch=false --code-coverage
 ```
+
+The Angular test command writes an LCOV report to
+`services/client/coverage/client/lcov.info`, which is imported by the
+SonarQube analysis.
 
 The CI pipeline runs the backend Maven verifications and Angular tests, builds
 the application images, checks the SonarQube quality gate, and deploys
