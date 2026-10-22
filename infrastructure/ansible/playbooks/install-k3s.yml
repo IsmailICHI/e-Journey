@@ -1,0 +1,11 @@
+---
+- name: Install a single-node k3s cluster for Travel-Plan
+  hosts: k3s_server
+  become: true
+  gather_facts: true
+  vars_files:
+    - ../group_vars/all.yml
+  vars:
+    k3s_action: install
+  roles:
+    - k3s

@@ -1,0 +1,13 @@
+---
+- name: Deploy a tested revision to the k3s VM
+  hosts: k3s_server
+  become: true
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all.yml
+  vars:
+    k3s_action: deploy_ci
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  roles:
+    - k3s

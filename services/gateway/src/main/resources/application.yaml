@@ -1,0 +1,69 @@
+server:
+  port: 8089
+  shutdown: graceful
+
+spring:
+  application:
+    name: gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  cloud:
+    gateway:
+      httpclient:
+        connect-timeout: 2000
+        response-timeout: 5s
+      routes:
+        - id: user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/users/**, /api/v1/auth/**, /api/v1/admin/users, /api/v1/admin/users/**
+
+        - id: travel-service
+          uri: ${TRAVEL_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/travels/**, /api/v1/places/public, /api/v1/admin/travels, /api/v1/admin/travels/**
+
+        - id: payment-service
+          uri: ${PAYMENT_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/payments/**, /api/v1/admin/payments, /api/v1/admin/payments/**
+
+        - id: recommendation-service
+          uri: ${RECOMMENDATION_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/recommendations/**
+
+jwt:
+  secret: ${JWT_SECRET}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200,http://localhost:4201,http://127.0.0.1:4201}
+
+logging:
+  level:
+    root: INFO
+    com.travel.gateway: INFO
+    org.springframework.cloud.gateway: INFO
+management:
+  server:
+    port: 8090
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 0.1

@@ -1,0 +1,181 @@
+- name: Confirm the workstation environment file exists
+  ansible.builtin.stat:
+    path: "{{ ci_env_source }}"
+  delegate_to: localhost
+  become: false
+  register: ci_env_source_stat
+
+- name: Require the project environment file
+  ansible.builtin.assert:
+    that:
+      - ci_env_source_stat.stat.exists
+      - ci_env_source_stat.stat.isreg
+    fail_msg: "Project environment file is missing: {{ ci_env_source }}"
+
+- name: Install Docker Compose v2
+  ansible.builtin.apt:
+    name: docker-compose-v2
+    state: present
+    update_cache: true
+    lock_timeout: 600
+
+- name: Ensure Docker is running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Ensure the VM SSH service is running
+  ansible.builtin.service:
+    name: ssh
+    state: started
+    enabled: true
+
+- name: Confirm the VM SSH host key exists
+  ansible.builtin.stat:
+    path: /etc/ssh/ssh_host_ed25519_key.pub
+  register: ci_ssh_host_key
+
+- name: Require an Ed25519 SSH host key for Jenkins verification
+  ansible.builtin.assert:
+    that:
+      - ci_ssh_host_key.stat.exists
+      - ci_ssh_host_key.stat.isreg
+    fail_msg: The VM must have an Ed25519 SSH host key before Jenkins can verify its deployment connection.
+
+- name: Create CI runtime directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /opt/travelplan-ci, mode: '0700' }
+    - { path: "{{ ci_runtime_dir }}", mode: '0700' }
+
+- name: Stage the project environment file on the VM
+  ansible.builtin.copy:
+    src: "{{ ci_env_source }}"
+    dest: "{{ ci_env_file }}"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Create a dedicated Jenkins deployment key
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -q
+      - -t
+      - ed25519
+      - -N
+      - ''
+      - -C
+      - travelplan-jenkins-deploy
+      - -f
+      - "{{ ci_deploy_key }}"
+    creates: "{{ ci_deploy_key }}"
+
+- name: Secure the Jenkins deployment private key
+  ansible.builtin.file:
+    path: "{{ ci_deploy_key }}"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Read the Jenkins deployment public key
+  ansible.builtin.slurp:
+    src: "{{ ci_deploy_key }}.pub"
+  register: ci_deploy_public_key
+
+- name: Create the Vagrant user's SSH directory
+  ansible.builtin.file:
+    path: /home/vagrant/.ssh
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: '0700'
+
+- name: Authorize Jenkins to deploy as the Vagrant user
+  ansible.builtin.lineinfile:
+    path: /home/vagrant/.ssh/authorized_keys
+    line: "{{ ci_deploy_public_key.content | b64decode | trim }}"
+    create: true
+    owner: vagrant
+    group: vagrant
+    mode: '0600'
+
+- name: Read the Docker socket group ID
+  ansible.builtin.command:
+    argv:
+      - stat
+      - -c
+      - '%g'
+      - "{{ ci_docker_socket }}"
+  register: ci_docker_socket_group
+  changed_when: false
+
+- name: Validate the VM Compose configuration
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ ci_project_dir }}"
+      - --env-file
+      - "{{ ci_env_file }}"
+      - --file
+      - "{{ ci_compose_file }}"
+      - config
+      - --quiet
+  environment:
+    DOCKER_HOST: "unix://{{ ci_docker_socket }}"
+  changed_when: false
+
+- name: Start Jenkins and SonarQube with Docker Compose on the VM
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ ci_project_dir }}"
+      - --env-file
+      - "{{ ci_env_file }}"
+      - --file
+      - "{{ ci_compose_file }}"
+      - up
+      - --detach
+      - --build
+  environment:
+    DOCKER_HOST: "unix://{{ ci_docker_socket }}"
+    DOCKER_SOCKET_GID: "{{ ci_docker_socket_group.stdout | trim }}"
+    DOCKER_SOCKET_PATH: "{{ ci_docker_socket }}"
+  register: ci_compose_up
+  changed_when: "'Created' in ci_compose_up.stdout or 'Recreated' in ci_compose_up.stdout or 'Built' in ci_compose_up.stdout"
+
+- name: Wait for SonarQube to become available from Jenkins
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - travelplan-jenkins
+      - curl
+      - --fail
+      - --silent
+      - --show-error
+      - http://sonarqube:9000/api/system/status
+  register: ci_sonar_status
+  retries: 36
+  delay: 10
+  until: ci_sonar_status.rc == 0 and (ci_sonar_status.stdout | from_json).status == 'UP'
+  changed_when: false
+
+- name: Wait for Jenkins HTTP endpoint on the VM
+  ansible.builtin.uri:
+    url: http://127.0.0.1:8080/login
+    status_code: 200
+  register: ci_jenkins_status
+  retries: 36
+  delay: 5
+  until: ci_jenkins_status.status == 200

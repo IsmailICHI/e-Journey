@@ -1,0 +1,181 @@
+<header
+  class="fixed inset-x-0 top-0 z-40 w-full px-4 sm:px-8 rounded-none transition-colors duration-200 font-sans border-b border-black shadow-lg bg-[#0a0a0a]"
+>
+  <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 py-3.5 sm:py-4">
+
+    <!-- Brand -->
+    <a
+      routerLink="/home"
+      (click)="closeMenu()"
+      aria-label="TRAVELPLAN home"
+      class="flex shrink-0 items-center gap-2.5 rounded-none"
+    >
+      <img src="/travelplan-logo.svg" alt="TRAVELPLAN logo" class="h-7 w-7 object-contain sm:h-8 sm:w-8" />
+      <span class="flex flex-col justify-center">
+        <span class="block text-xs font-bold tracking-[0.22em] text-white uppercase leading-none sm:text-sm font-sans">TRAVELPLAN</span>
+        <span class="mt-0.5 block text-[8px] font-medium tracking-[0.18em] text-[#a39882] uppercase leading-none font-sans">TRAVEL MANAGEMENT</span>
+      </span>
+    </a>
+
+    <!-- Desktop Nav -->
+    <nav class="hidden shrink-0 items-center gap-1 bg-[#121212] px-2 py-1 md:flex rounded-none" aria-label="Main navigation">
+
+      <!-- HOME -->
+      <a
+        routerLink="/home"
+        (click)="closeMenu()"
+        class="px-3 py-1 font-sans text-[11px] font-bold tracking-[0.14em] uppercase rounded-none transition-none"
+        [ngClass]="{
+          'bg-stone-800 text-white': activePage === 'home',
+          'text-stone-400 hover:bg-stone-900 hover:text-stone-200': activePage !== 'home'
+        }"
+      >HOME</a>
+
+      <!-- Logged-in Links -->
+      <ng-container *ngIf="isLoggedIn">
+        <a
+          routerLink="/profile"
+          (click)="closeMenu()"
+          class="px-3 py-1 font-sans text-[11px] font-bold tracking-[0.14em] uppercase rounded-none transition-none"
+          [ngClass]="{
+            'bg-stone-800 text-white': activePage === 'profile',
+            'text-stone-400 hover:bg-stone-900 hover:text-stone-200': activePage !== 'profile'
+          }"
+          [attr.aria-current]="activePage === 'profile' ? 'page' : null"
+        >PROFILE</a>
+
+        <a
+          *ngIf="isAdmin"
+          routerLink="/admin"
+          (click)="closeMenu()"
+          class="px-3 py-1 font-sans text-[11px] font-bold tracking-[0.14em] uppercase rounded-none transition-none"
+          [ngClass]="{
+            'bg-stone-800 text-white': activePage === 'admin',
+            'text-stone-400 hover:bg-stone-900 hover:text-stone-200': activePage !== 'admin'
+          }"
+          [attr.aria-current]="activePage === 'admin' ? 'page' : null"
+        >ADMIN</a>
+      </ng-container>
+
+      <!-- Divider -->
+      <span class="mx-1 h-3.5 w-px bg-stone-800"></span>
+
+      <!-- Feedback / Activity Log -->
+      <button
+        type="button"
+        (click)="openFeedbackLog()"
+        class="flex items-center gap-1.5 px-2.5 py-1 font-sans text-[11px] font-bold tracking-[0.14em] text-stone-400 hover:bg-stone-900 hover:text-white uppercase rounded-none transition-none"
+        title="Open Feedback & Activity Log"
+      >
+        <span class="h-1.5 w-1.5 bg-[#c5a059]"></span>
+        <span>LOG</span>
+      </button>
+
+      <!-- Guest Sign In (Hidden on Login/Register Pages) / Auth Sign Out -->
+      <a
+        *ngIf="!isLoggedIn && activePage !== 'login' && activePage !== 'register'"
+        routerLink="/login"
+        (click)="closeMenu()"
+        class="ml-1 bg-[#c5a059] px-3.5 py-1 font-sans text-[11px] font-bold tracking-[0.16em] text-black hover:bg-[#d4af37] active:bg-[#b38f48] uppercase rounded-none transition-none"
+      >SIGN IN</a>
+
+      <button
+        *ngIf="isLoggedIn"
+        type="button"
+        (click)="logout()"
+        class="ml-1 bg-stone-900 px-3.5 py-1 font-sans text-[11px] font-bold tracking-[0.16em] text-stone-300 hover:bg-stone-800 hover:text-white uppercase rounded-none transition-none"
+      >SIGN OUT</button>
+    </nav>
+
+    <!-- Mobile Menu Hamburger Toggle -->
+    <button
+      type="button"
+      (click)="toggleMenu()"
+      [attr.aria-expanded]="menuOpen"
+      aria-controls="mobile-navigation"
+      [attr.aria-label]="menuOpen ? 'Close navigation menu' : 'Open navigation menu'"
+      class="flex flex-col justify-center gap-1 p-1 shrink-0 md:hidden focus:outline-none rounded-none"
+    >
+      <span
+        class="h-0.5 w-5 bg-stone-200 origin-center"
+        [ngClass]="{ 'translate-y-1.5 rotate-45 bg-[#c5a059]': menuOpen }"
+      ></span>
+      <span
+        class="h-0.5 w-5 bg-stone-200"
+        [ngClass]="{ 'opacity-0': menuOpen }"
+      ></span>
+      <span
+        class="h-0.5 w-5 bg-stone-200 origin-center"
+        [ngClass]="{ '-translate-y-1.5 -rotate-45 bg-[#c5a059]': menuOpen }"
+      ></span>
+    </button>
+  </div>
+
+  <!-- Mobile Drawer Menu -->
+  <nav
+    *ngIf="menuOpen"
+    id="mobile-navigation"
+    aria-label="Mobile navigation"
+    class="flex flex-col gap-0.5 bg-[#0f0f0f] p-3 shadow-2xl border-t border-stone-900 md:hidden rounded-none font-sans"
+  >
+    <a
+      routerLink="/home"
+      (click)="closeMenu()"
+      class="px-3 py-2 font-sans text-[11px] font-bold tracking-[0.16em] uppercase rounded-none"
+      [ngClass]="{
+        'bg-stone-800 text-[#c5a059]': activePage === 'home',
+        'text-stone-300 hover:bg-stone-900 hover:text-white': activePage !== 'home'
+      }"
+    >HOME</a>
+
+    <ng-container *ngIf="isLoggedIn">
+      <a
+        routerLink="/profile"
+        (click)="closeMenu()"
+        class="px-3 py-2 font-sans text-[11px] font-bold tracking-[0.16em] uppercase rounded-none"
+        [ngClass]="{
+          'bg-stone-800 text-[#c5a059]': activePage === 'profile',
+          'text-stone-300 hover:bg-stone-900 hover:text-white': activePage !== 'profile'
+        }"
+        [attr.aria-current]="activePage === 'profile' ? 'page' : null"
+      >PROFILE</a>
+
+      <a
+        *ngIf="isAdmin"
+        routerLink="/admin"
+        (click)="closeMenu()"
+        class="px-3 py-2 font-sans text-[11px] font-bold tracking-[0.16em] uppercase rounded-none"
+        [ngClass]="{
+          'bg-stone-800 text-[#c5a059]': activePage === 'admin',
+          'text-stone-300 hover:bg-stone-900 hover:text-white': activePage !== 'admin'
+        }"
+        [attr.aria-current]="activePage === 'admin' ? 'page' : null"
+      >ADMIN</a>
+    </ng-container>
+
+    <div class="my-1.5 border-t border-stone-900"></div>
+
+    <button
+      type="button"
+      (click)="openFeedbackLog()"
+      class="flex items-center gap-2 px-3 py-2 font-sans text-[11px] font-bold tracking-[0.16em] text-stone-300 hover:bg-stone-900 hover:text-white text-left uppercase rounded-none"
+    >
+      <span class="h-1.5 w-1.5 bg-[#c5a059]"></span>
+      <span>Activity Log</span>
+    </button>
+
+    <a
+      *ngIf="!isLoggedIn && activePage !== 'login' && activePage !== 'register'"
+      routerLink="/login"
+      (click)="closeMenu()"
+      class="mt-1.5 bg-[#c5a059] px-3 py-2.5 font-sans text-center text-[11px] font-bold tracking-[0.16em] text-black hover:bg-[#d4af37] uppercase rounded-none"
+    >SIGN IN</a>
+
+    <button
+      *ngIf="isLoggedIn"
+      type="button"
+      (click)="logout()"
+      class="mt-1.5 bg-stone-900 px-3 py-2.5 font-sans text-left text-[11px] font-bold tracking-[0.16em] text-stone-300 hover:bg-stone-800 hover:text-white uppercase rounded-none"
+    >SIGN OUT</button>
+  </nav>
+</header>

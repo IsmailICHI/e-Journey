@@ -1,0 +1,191 @@
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        skipStagesAfterUnstable()
+    }
+
+    environment {
+        SONAR_URL = 'http://sonarqube:9000'
+        K8S_NAMESPACE = 'travel-plan'
+        IMAGE_TAG = 'dev'
+    }
+
+    stages {
+        stage('Validate repository') {
+            steps {
+                sh '''
+                    set -eu
+                    docker version
+                    test -f sonar-project.properties
+                    test -f infrastructure/ansible/playbooks/deploy-ci.yml
+                    test -f k8s/overlays/dev/kustomization.yaml
+                    test -f services/gateway/pom.xml
+                    test -f services/user-service/pom.xml
+                    test -f services/travel-service/pom.xml
+                    kubectl kustomize k8s/overlays/dev > "$WORKSPACE/travel-plan-rendered.yaml"
+                '''
+            }
+        }
+        stage('Parallel test') {
+            parallel {
+                stage('Test frontend') {
+                    steps {
+                        dir('services/client') {
+                            sh '''
+                            set -eu
+
+                            echo "=== Node and npm ==="
+                            node --version
+                            npm --version
+
+                            echo "=== Install dependencies ==="
+                            npm ci
+                            echo "=========CHROME_BIN=$CHROME_BIN"
+                            "$CHROME_BIN" --version
+                            echo "=== Run Angular tests ==="
+                            npx ng test --watch=false --code-coverage --browsers=ChromeHeadlessNoSandbox
+                            test -s coverage/client/lcov.info
+                            sed -i 's|^SF:src/|SF:services/client/src/|' coverage/client/lcov.info
+                            grep -q '^SF:services/client/src/' coverage/client/lcov.info
+                    '''
+                        }
+                    }
+                }
+
+                stage('Test backend services') {
+                    steps {
+                        sh '''
+                    set -eu
+                    for service in gateway user-service travel-service; do
+                        mvn -B -f "services/$service/pom.xml" clean verify
+                    done
+                '''
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'services/*/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build application images') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p .ci-images
+                                        docker build --file services/client/Dockerfile \
+                                            --tag "travelplan/frontend:$IMAGE_TAG" .
+                                        docker build --file services/gateway/Dockerfile \
+                                            --tag "travelplan/gateway:$IMAGE_TAG" .
+                                        docker build --file services/user-service/Dockerfile \
+                                            --tag "travelplan/user-service:$IMAGE_TAG" .
+                                        docker build --file services/travel-service/DockerFile \
+                                            --tag "travelplan/travel-service:$IMAGE_TAG" .
+                    for image in frontend gateway user-service travel-service; do
+                                                docker save --output ".ci-images/$image.tar" \
+                                                    "travelplan/$image:$IMAGE_TAG"
+                    done
+                '''
+            }
+        }
+
+        stage('SonarQube analysis and quality gate') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        set +x
+                        sonar-scanner \\
+                          -Dproject.settings=sonar-project.properties \\
+                          -Dsonar.host.url="$SONAR_URL" \\
+                          -Dsonar.token="$SONAR_TOKEN"
+                    '''
+                    sh '''
+                        set +x
+                        set -eu
+                        task_url="$(sed -n 's/^ceTaskUrl=//p' .scannerwork/report-task.txt)"
+                        test -n "$task_url"
+                        analysis_id=
+                        task_status=
+                        for attempt in $(seq 1 36); do
+                            task_json="$(curl --fail --silent --show-error --user "$SONAR_TOKEN:" "$task_url")"
+                            task_status="$(printf '%s' "$task_json" | jq -r '.task.status')"
+                            analysis_id="$(printf '%s' "$task_json" | jq -r '.task.analysisId // empty')"
+                            if [ "$task_status" = SUCCESS ]; then
+                                break
+                            fi
+                            if [ "$task_status" = FAILED ] || [ "$task_status" = CANCELED ]; then
+                                echo "SonarQube background task ended with status: $task_status" >&2
+                                exit 1
+                            fi
+                            sleep 5
+                        done
+                        test "$task_status" = SUCCESS
+                        test -n "$analysis_id"
+                        gate_json="$(curl --fail --silent --show-error --user "$SONAR_TOKEN:" \
+                          "$SONAR_URL/api/qualitygates/project_status?analysisId=$analysis_id")"
+                        gate_status="$(printf '%s' "$gate_json" | jq -r '.projectStatus.status')"
+                        if [ "$gate_status" != OK ]; then
+                            echo "SonarQube quality gate failed: $gate_status" >&2
+                            exit 1
+                        fi
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to k3s VM') {
+            when {
+                beforeAgent true
+                expression {
+                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH
+                    return branch == 'https-feature' || branch == 'origin/https-feature'
+                }
+            }
+            steps {
+                withCredentials([file(credentialsId: 'travel-plan-env-file', variable: 'ENV_FILE')]) {
+                    sh '''
+                    set -eu
+                    install -m 0600 "$ENV_FILE" .env
+                    echo "================================================================================================"
+                    echo "===============================.ENV HAS BEEN COPIED SUCCESSFULLY ==============================="
+                    echo "================================================================================================"
+
+                    test -r .env
+                    test -r /run/jenkins-k3s-key
+
+                    export ANSIBLE_CONFIG="$WORKSPACE/infrastructure/ansible/ansible.cfg"
+                    export ANSIBLE_ROLES_PATH="$WORKSPACE/infrastructure/ansible/roles"
+                    export ANSIBLE_HOST_KEY_CHECKING=True
+
+                    python3 infrastructure/ci-platform/scripts/with-dotenv.py .env \
+                    ansible-playbook \
+                    -i infrastructure/ansible/inventories/dev/hosts.yml \
+                    infrastructure/ansible/playbooks/deploy-ci.yml \
+                        --extra-vars "deployment_source=$WORKSPACE \
+                        ci_image_archive_dir=$WORKSPACE/.ci-images \
+                        ansible_host=host.docker.internal \
+                        ansible_port=22 \
+                        ansible_user=vagrant \
+                        ansible_ssh_private_key_file=/run/jenkins-k3s-key"
+                '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // sh 'rm -f .env; rm -rf .ci-images .scannerwork'
+            sh 'rm -f .env .ci-extra-vars.json; rm -rf .ci-images .scannerwork'
+            archiveArtifacts allowEmptyArchive: true, artifacts: 'travel-plan-rendered.yaml'
+        }
+        failure {
+            echo 'The pipeline failed. Review the test, SonarQube, or k3s deployment stage output.'
+        }
+    }
+}

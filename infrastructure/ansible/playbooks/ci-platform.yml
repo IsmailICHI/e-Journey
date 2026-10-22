@@ -1,0 +1,15 @@
+---
+- name: Start the CI platform on the k3s VM
+  hosts: k3s_server
+  become: true
+  gather_facts: true
+  vars:
+    ci_env_source: "{{ playbook_dir }}/../../../.env"
+    ci_env_file: /opt/travelplan-ci/.env
+    ci_compose_file: /vagrant/infrastructure/ci-platform/docker-compose.yaml
+    ci_project_dir: /vagrant/infrastructure/ci-platform
+    ci_runtime_dir: /var/lib/travelplan-ci
+    ci_deploy_key: /var/lib/travelplan-ci/jenkins-deploy-key
+    ci_docker_socket: /var/run/docker.sock
+  roles:
+    - ci

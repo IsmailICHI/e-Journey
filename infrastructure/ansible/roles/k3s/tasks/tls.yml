@@ -1,0 +1,72 @@
+---
+- name: Verify the host-mounted TLS certificate exists
+  ansible.builtin.stat:
+    path: /etc/travel-plan/certs/travel-plan.pem
+  register: travel_plan_tls_cert
+
+- name: Verify the host-mounted TLS private key exists
+  ansible.builtin.stat:
+    path: /etc/travel-plan/certs/travel-plan-key.pem
+  register: travel_plan_tls_key
+
+- name: Require both TLS files before provisioning
+  ansible.builtin.assert:
+    that:
+      - travel_plan_tls_cert.stat.exists
+      - travel_plan_tls_key.stat.exists
+    fail_msg: >-
+      TLS certificate files are unavailable at
+      /etc/travel-plan/certs/. Check the Vagrant synced folder.
+
+- name: Ensure the travel-plan namespace exists
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - create
+      - namespace
+      - travel-plan
+      - --dry-run=client
+      - -o
+      - yaml
+  register: travel_plan_namespace_manifest
+  changed_when: false
+
+- name: Apply the travel-plan namespace
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - apply
+      - -f
+      - "-"
+    stdin: "{{ travel_plan_namespace_manifest.stdout }}"
+  changed_when: false
+
+- name: Create or update the Travel-Plan TLS Secret
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - travel-plan
+      - create
+      - secret
+      - tls
+      - travel-plan-local-tls
+      - --cert=/etc/travel-plan/certs/travel-plan.pem
+      - --key=/etc/travel-plan/certs/travel-plan-key.pem
+      - --dry-run=client
+      - -o
+      - yaml
+  register: travel_plan_tls_secret_manifest
+  changed_when: false
+  no_log: true
+
+- name: Apply the Travel-Plan TLS Secret
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - apply
+      - -f
+      - "-"
+    stdin: "{{ travel_plan_tls_secret_manifest.stdout }}"
+  no_log: true
+  changed_when: true

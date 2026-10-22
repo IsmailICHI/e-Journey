@@ -1,0 +1,34 @@
+---
+- name: Ensure the kubectl config directory exists
+  ansible.builtin.file:
+    path: "/home/{{ kubectl_user }}/.kube"
+    state: directory
+    mode: "0700"
+    owner: "{{ kubectl_user }}"
+    group: "{{ kubectl_user }}"
+
+- name: Copy the k3s kubeconfig to the VM user's home
+  ansible.builtin.copy:
+    src: "{{ kubeconfig_path }}"
+    dest: "/home/{{ kubectl_user }}/.kube/config"
+    remote_src: true
+    mode: "0600"
+    owner: "{{ kubectl_user }}"
+    group: "{{ kubectl_user }}"
+
+- name: Replace the default localhost listener with the node address
+  ansible.builtin.replace:
+    path: "/home/{{ kubectl_user }}/.kube/config"
+    regexp: "https://127.0.0.1:6443"
+    replace: "https://{{ k3s_server_ip }}:6443"
+
+- name: Validate kubectl access
+  ansible.builtin.command: kubectl get nodes
+  become_user: "{{ kubectl_user }}"
+  environment:
+    KUBECONFIG: "/home/{{ kubectl_user }}/.kube/config"
+  register: kubectl_nodes
+  changed_when: false
+
+- name: Provision the Travel-Plan TLS Secret
+  ansible.builtin.import_tasks: tls.yml

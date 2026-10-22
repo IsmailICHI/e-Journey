@@ -1,0 +1,351 @@
+<main class="min-h-screen bg-[#080706] pt-20 text-stone-100 sm:pt-24">
+  <app-navbar activePage="admin" />
+
+  <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+    <section
+      class="relative mb-7 overflow-hidden border border-white/10 bg-gradient-to-br from-white/[0.07] via-white/[0.025] to-rose-100/[0.04] p-5 sm:mb-9 sm:p-8">
+      <div class="pointer-events-none absolute -right-10 -top-20 h-56 w-56 rounded-full bg-rose-100/[0.06] blur-3xl">
+      </div>
+      <div class="relative flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p class="text-[10px] tracking-[0.2em] text-rose-100">TRAVELPLAN · OPERATIONS</p>
+          <h1 class="mt-2 font-sans-clean text-3xl font-light sm:text-4xl">Admin dashboard</h1>
+          <p class="mt-2 max-w-xl text-sm text-stone-400">Manage the travel catalogue and user accounts from one place.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="max-w-full truncate text-xs text-stone-400">{{ adminEmail }}</span>
+          <a routerLink="/profile"
+            class="inline-flex min-h-10 items-center border border-white/15 px-4 text-[10px] tracking-[0.1em] text-stone-200 transition hover:border-rose-100/50 hover:text-white">MY
+            PROFILE</a>
+        </div>
+      </div>
+    </section>
+    <nav aria-label="Admin sections" class="mb-8 flex gap-2 overflow-x-auto border-b border-white/10">
+      <button *ngFor="let tab of tabs" type="button" (click)="setTab(tab.id)"
+        [attr.aria-current]="activeTab === tab.id ? 'page' : null"
+        [class]="activeTab === tab.id ? 'border-b border-rose-100 px-4 py-3 text-xs text-rose-100' : 'border-b border-transparent px-4 py-3 text-xs text-stone-400 hover:text-white'">
+        {{ tab.label }}
+      </button>
+    </nav>
+
+
+
+    <section *ngIf="activeTab === 'travels'">
+      <div class="min-w-0">
+        <div class="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p class="text-[10px] tracking-[0.2em] text-rose-100">TRAVEL CATALOGUE</p>
+            <h2 class="mt-2 font-sans-clean text-2xl font-light">Manage travels</h2>
+          </div>
+          <button type="button" (click)="startNewTravel()"
+            class="shrink-0 border border-rose-100/60 px-4 py-2.5 text-[10px] tracking-[0.12em] text-rose-100 hover:bg-rose-100 hover:text-black">ADD
+            TRAVEL</button>
+        </div>
+
+        <p *ngIf="loadingTravels && travels.length === 0" class="py-8 text-sm text-stone-400">Loading travels…</p>
+        <div *ngIf="!loadingTravels && travels.length === 0"
+          class="border border-white/10 px-5 py-10 text-center text-sm text-stone-400">
+          No travel entries yet. Add your first itinerary.
+        </div>
+        <div class="space-y-3">
+          <article *ngFor="let travel of travels"
+            class="group flex flex-col gap-4 border border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent p-4 transition-colors hover:border-rose-100/30 sm:p-5">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-[10px] tracking-[0.14em] text-rose-100">{{ travel.city }}, {{ travel.country }} · {{
+                  travel.duration }} DAYS</p>
+                <span class="border border-amber-100/20 px-2 py-1 text-[9px] tracking-[0.1em] text-amber-100">{{
+                  travel.paymentMethod || 'NO PAYMENT METHOD' }}</span>
+              </div>
+              <h3 class="mt-2 break-words font-sans-clean text-xl font-light">{{ travel.title }}</h3>
+              <p class="mt-2 break-words text-xs leading-5 text-stone-400">
+                {{ travel.startDate || 'Dates not set' }}<span *ngIf="travel.endDate"> — {{ travel.endDate }}</span>
+                <span *ngIf="travel.destinations.length"> · {{ travel.destinations.join(', ') }}</span>
+              </p>
+            </div>
+            <div class="grid grid-cols-3 gap-2 border-t border-white/10 pt-3">
+              <button type="button" (click)="showTravel(travel)"
+                class="min-h-10 border border-rose-100/40 px-2 py-2 text-[9px] tracking-[0.08em] text-rose-100 transition hover:bg-rose-100 hover:text-black sm:text-[10px]">SHOW
+                DETAILS</button>
+              <button type="button" (click)="editTravel(travel)"
+                class="min-h-10 border border-white/15 px-2 py-2 text-[9px] tracking-[0.08em] text-stone-300 hover:text-white sm:text-[10px]">EDIT</button>
+              <button type="button" (click)="deleteTravel(travel)"
+                class="min-h-10 border border-red-200/20 px-2 py-2 text-[9px] tracking-[0.08em] text-red-200 hover:bg-red-950/40 sm:text-[10px]">DELETE</button>
+            </div>
+          </article>
+        </div>
+      </div>
+
+    </section>
+
+    <div *ngIf="isTravelEditorOpen"
+      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 p-3 backdrop-blur-md sm:items-center sm:p-6"
+      (click)="cancelTravelEdit()">
+      <section id="travel-editor" role="dialog" aria-modal="true" aria-labelledby="travel-editor-title"
+        class="my-auto max-h-[calc(100svh-1.5rem)] w-full max-w-4xl overflow-y-auto rounded-xl border border-white/15 bg-[#100f0e] shadow-[0_32px_120px_rgba(0,0,0,0.75)] sm:max-h-[calc(100svh-3rem)]"
+        (click)="$event.stopPropagation()">
+        <div
+          class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-white/10 bg-[#100f0e]/95 px-5 py-5 backdrop-blur sm:px-8 sm:py-6">
+          <div class="flex min-w-0 items-center gap-3 sm:gap-4">
+            <img src="/travelplan-logo.svg" alt="TRAVELPLAN" class="h-10 w-10 shrink-0 sm:h-12 sm:w-12" />
+            <div class="min-w-0">
+              <p class="text-[10px] tracking-[0.18em] text-rose-100">{{ editingTravelId === null ? 'NEW ENTRY' : 'EDIT
+                ENTRY' }}</p>
+              <h2 id="travel-editor-title" class="mt-1 font-sans-clean text-xl font-light sm:text-2xl">{{
+                editingTravelId === null ? 'Create travel' : 'Update travel' }}</h2>
+              <p class="mt-1 hidden text-xs text-stone-400 sm:block">Build a considered itinerary for your travel
+                catalogue.</p>
+            </div>
+          </div>
+          <button type="button" (click)="cancelTravelEdit()" aria-label="Close travel editor"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 text-xl text-stone-300 transition hover:border-rose-100/50 hover:text-white">×</button>
+        </div>
+
+        <form #travelEditor="ngForm" (ngSubmit)="saveTravel()"
+          class="grid gap-x-5 gap-y-5 p-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-6 sm:p-8">
+          <label class="text-xs text-stone-300 sm:col-span-2">Travel title
+            <input name="title" [(ngModel)]="travelForm.title" required maxlength="120" class="admin-input" />
+          </label>
+          <label class="text-xs text-stone-300">Primary city
+            <input name="city" [(ngModel)]="travelForm.city" required class="admin-input" />
+          </label>
+          <label class="text-xs text-stone-300">Country
+            <input name="country" [(ngModel)]="travelForm.country" required class="admin-input" />
+          </label>
+          <label class="text-xs text-stone-300 sm:col-span-2">Additional destinations <span
+              class="text-stone-500">(comma-separated)</span>
+            <input name="destinations" [(ngModel)]="travelForm.destinations" class="admin-input"
+              placeholder="Fes, Chefchaouen" />
+          </label>
+          <label class="text-xs text-stone-300">Start date
+            <input name="startDate" type="date" [(ngModel)]="travelForm.startDate" class="admin-input" />
+          </label>
+          <label class="text-xs text-stone-300">End date
+            <input name="endDate" type="date" [(ngModel)]="travelForm.endDate" class="admin-input" />
+          </label>
+          <label class="text-xs text-stone-300">Duration in days
+            <input name="duration" type="number" min="1" [(ngModel)]="travelForm.duration" required
+              class="admin-input" />
+          </label>
+          <label class="text-xs text-stone-300">Image URL
+            <input name="imageUrl" type="url" [(ngModel)]="travelForm.imageUrl" class="admin-input" />
+          </label>
+          <label class="text-xs text-stone-300 sm:col-span-2">Accommodation
+            <input name="accommodation" [(ngModel)]="travelForm.accommodation" class="admin-input" />
+          </label>
+          <label class="text-xs text-stone-300 sm:col-span-2">Transportation
+            <input name="transportation" [(ngModel)]="travelForm.transportation" class="admin-input" />
+
+          </label>
+          <label class="text-xs text-stone-300 sm:col-span-2">Payment method
+            <select name="paymentMethod" [(ngModel)]="travelForm.paymentMethod" required class="admin-input"
+              style="background-color: #121212; color: #d1d5db; border: 1px solid #374151;">
+              <option value="" disabled style="background-color: #121212; color: #6b7280;">Select a payment provider
+              </option>
+              <option value="Stripe" style="background-color: #121212; color: #d1d5db;">Stripe</option>
+              <option value="PayPal" style="background-color: #121212; color: #d1d5db;">PayPal</option>
+            </select>
+            <span class="mt-1 block text-[10px] leading-4 text-stone-500">Saved as a travel preference only. No payment
+              processing is enabled.</span>
+          </label>
+          <label class="text-xs text-stone-300 sm:col-span-2">Description
+            <textarea name="description" [(ngModel)]="travelForm.description" rows="3" class="admin-input"></textarea>
+          </label>
+          <label class="text-xs text-stone-300 sm:col-span-2">Activities <span class="text-stone-500">(one activity per
+              line)</span>
+            <textarea name="activities" [(ngModel)]="travelForm.activities" rows="4" class="admin-input"
+              placeholder="Visit the old medina&#10;Sunset walk along the coast"></textarea>
+          </label>
+          <div
+            class="flex flex-col-reverse gap-3 border-t border-white/10 pt-5 sm:col-span-2 sm:flex-row sm:justify-end sm:pt-6">
+            <button type="button" (click)="cancelTravelEdit()"
+              class="min-h-12 rounded-md border border-white/15 px-6 py-3 text-xs font-medium tracking-[0.1em] text-stone-300 transition hover:border-white/30 hover:text-white">CANCEL</button>
+            <button type="submit" [disabled]="travelEditor.invalid || savingTravel"
+              class="min-h-12 rounded-md border border-rose-100/60 bg-rose-100 px-7 py-3 text-xs font-semibold tracking-[0.12em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">
+              {{ savingTravel ? 'SAVING…' : editingTravelId === null ? 'CREATE TRAVEL' : 'SAVE CHANGES' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div *ngIf="pendingDelete as confirmation"
+      class="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-md sm:p-6"
+      (click)="cancelDelete()" (keydown.escape)="cancelDelete()">
+      <section role="alertdialog" aria-modal="true" aria-labelledby="delete-confirm-title"
+        aria-describedby="delete-confirm-description"
+        class="my-auto w-full max-w-md overflow-hidden rounded-xl border border-red-200/20 bg-[#100f0e] shadow-[0_32px_120px_rgba(0,0,0,0.75)]"
+        (click)="$event.stopPropagation()">
+        <div class="border-b border-white/10 px-6 py-5 sm:px-7">
+          <div class="flex items-center gap-3">
+            <img src="/travelplan-logo.svg" alt="TRAVELPLAN" class="h-10 w-10 shrink-0" />
+            <div>
+              <p class="text-[9px] font-semibold tracking-[0.2em] text-red-200">CONFIRM DELETION</p>
+              <h2 id="delete-confirm-title" class="mt-1 font-sans-clean text-xl font-medium text-stone-100">Delete {{
+                confirmation.type }}?</h2>
+            </div>
+          </div>
+        </div>
+        <div class="px-6 py-6 sm:px-7 sm:py-7">
+          <p class="break-words text-sm font-medium text-stone-100">{{ confirmation.name }}</p>
+          <p class="mt-1 break-all text-xs text-stone-400">{{ confirmation.detail }}</p>
+          <p id="delete-confirm-description" class="mt-5 text-sm leading-6 text-stone-400">
+            This action cannot be undone. The {{ confirmation.type }} will be permanently removed from TRAVELPLAN.
+          </p>
+          <div class="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" (click)="cancelDelete()" [disabled]="deleting"
+              class="min-h-11 rounded-md border border-white/15 px-5 py-3 text-xs font-medium tracking-[0.1em] text-stone-300 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">CANCEL</button>
+            <button type="button" (click)="confirmDelete()" [disabled]="deleting"
+              class="min-h-11 rounded-md border border-red-200/50 bg-red-200 px-5 py-3 text-xs font-semibold tracking-[0.1em] text-[#1c1010] transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50">
+              {{ deleting ? 'DELETING…' : 'DELETE ' + (confirmation.type | uppercase) }}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section *ngIf="activeTab === 'users'">
+      <div class="mb-5">
+        <p class="text-[10px] tracking-[0.2em] text-rose-100">ACCOUNT DIRECTORY</p>
+        <h2 class="mt-2 font-sans-clean text-2xl font-light">Manage users</h2>
+        <p class="mt-2 text-sm text-stone-400">Administrators can review accounts and delete them. User creation and
+          editing are not available here.</p>
+      </div>
+      <p *ngIf="loadingUsers && users.length === 0" class="py-8 text-sm text-stone-400">Loading users…</p>
+      <div *ngIf="users.length > 0" class="hidden overflow-x-auto border border-white/10 sm:block">
+        <table class="w-full min-w-[620px] text-left">
+          <thead class="bg-white/[0.04] text-[10px] tracking-[0.12em] text-stone-400">
+            <tr>
+              <th class="px-4 py-3 font-normal">NAME</th>
+              <th class="px-4 py-3 font-normal">EMAIL</th>
+              <th class="px-4 py-3 font-normal">ROLE</th>
+              <th class="px-4 py-3 font-normal">STATUS</th>
+              <th class="px-4 py-3 font-normal">ACTION</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/10 text-sm">
+            <tr *ngFor="let user of users">
+              <td class="px-4 py-4">{{ user.fullName }}</td>
+              <td class="px-4 py-4 text-stone-300">{{ user.email }}</td>
+              <td class="px-4 py-4"><span class="border border-white/15 px-2 py-1 text-[10px]">{{ user.role }}</span>
+              </td>
+              <td class="px-4 py-4 text-xs" [class.text-emerald-200]="user.state" [class.text-stone-500]="!user.state">
+                {{ user.state ? 'Active' : 'Not set' }}</td>
+              <td class="px-4 py-4">
+                <button type="button" (click)="deleteUser(user)"
+                  class="border border-red-200/20 px-3 py-2 text-[10px] tracking-[0.1em] text-red-200 hover:bg-red-950/40">DELETE</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div *ngIf="users.length > 0" class="space-y-3 sm:hidden">
+        <article *ngFor="let user of users" class="border border-white/10 bg-white/[0.025] p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 class="break-words text-sm text-stone-100">{{ user.fullName }}</h3>
+              <p class="mt-1 break-all text-xs text-stone-400">{{ user.email }}</p>
+            </div>
+            <span class="shrink-0 border border-white/15 px-2 py-1 text-[9px]">{{ user.role }}</span>
+          </div>
+          <div class="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+            <span class="text-xs" [class.text-emerald-200]="user.state" [class.text-stone-500]="!user.state">{{
+              user.state ? 'Active' : 'Not set' }}</span>
+            <button type="button" (click)="deleteUser(user)"
+              class="min-h-10 border border-red-200/20 px-3 text-[10px] tracking-[0.1em] text-red-200 hover:bg-red-950/40">DELETE
+              ACCOUNT</button>
+          </div>
+        </article>
+      </div>
+      <div *ngIf="!loadingUsers && users.length === 0"
+        class="border border-white/10 px-4 py-8 text-center text-sm text-stone-400">No user accounts found.</div>
+    </section>
+
+    <div *ngIf="activeTab === 'travels' ? hasMoreTravels : hasMoreUsers" #loadMoreSentinel
+      class="flex min-h-16 items-center justify-center py-4 text-center">
+      <button type="button" (click)="loadNextPage()" [disabled]="loadingUsers || loadingTravels"
+        class="min-h-10 border border-white/15 px-5 text-xs text-stone-300 transition hover:border-rose-100/50 hover:text-white disabled:opacity-50">
+        {{ loadingUsers || loadingTravels ? 'Loading more…' : 'Load more' }}
+      </button>
+    </div>
+
+  </div>
+
+  <div *ngIf="selectedTravel as travel"
+    class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/85 p-3 backdrop-blur-sm sm:items-center sm:p-6"
+    (click)="closeTravelDetails()">
+    <section role="dialog" aria-modal="true" aria-labelledby="travel-details-title"
+      class="my-auto max-h-[calc(100svh-1.5rem)] w-full max-w-3xl overflow-y-auto border border-white/15 bg-[#100f0e] shadow-2xl sm:max-h-[calc(100svh-3rem)]"
+      (click)="$event.stopPropagation()">
+      <div
+        class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-white/10 bg-[#100f0e]/95 p-4 backdrop-blur sm:p-6">
+        <div class="min-w-0">
+          <p class="text-[10px] tracking-[0.18em] text-rose-100">TRAVEL DETAILS</p>
+          <h2 id="travel-details-title" class="mt-2 break-words font-sans-clean text-2xl font-light sm:text-3xl">{{
+            travel.title }}</h2>
+          <p class="mt-1 text-sm text-stone-400">{{ travel.city }}, {{ travel.country }}</p>
+          <p class="mt-1 text-[10px] text-stone-500">ENTRY #{{ travel.travelId }}</p>
+        </div>
+        <button type="button" (click)="closeTravelDetails()" aria-label="Close travel details"
+          class="flex h-10 w-10 shrink-0 items-center justify-center border border-white/15 text-xl text-stone-300 hover:text-white">×</button>
+      </div>
+      <img *ngIf="travel.imageUrl" [src]="travel.imageUrl" [alt]="travel.title" class="max-h-72 w-full object-cover" />
+      <div class="grid gap-5 p-4 sm:grid-cols-2 sm:gap-6 sm:p-6">
+        <div class="space-y-4">
+          <div>
+            <p class="text-[9px] tracking-[0.14em] text-stone-500">DESCRIPTION</p>
+            <p class="mt-1 whitespace-pre-line break-words text-sm leading-6 text-stone-200">{{ travel.description ||
+              'No description provided.' }}</p>
+          </div>
+          <div>
+            <p class="text-[9px] tracking-[0.14em] text-stone-500">DESTINATIONS</p>
+            <p class="mt-1 break-words text-sm text-stone-200">{{ travel.destinations.length ?
+              travel.destinations.join(', ') : travel.city }}</p>
+          </div>
+          <div>
+            <p class="text-[9px] tracking-[0.14em] text-stone-500">DATES & DURATION</p>
+            <p class="mt-1 text-sm text-stone-200">{{ travel.startDate || 'Start date not set' }}<span
+                *ngIf="travel.endDate"> — {{ travel.endDate }}</span></p>
+            <p class="mt-1 text-xs text-stone-400">{{ travel.duration }} days</p>
+          </div>
+          <div>
+            <p class="text-[9px] tracking-[0.14em] text-stone-500">PAYMENT PREFERENCE</p>
+            <p class="mt-1 text-sm text-amber-100">{{ travel.paymentMethod || 'Not selected' }}</p>
+            <p class="mt-1 text-[10px] text-stone-500">Preference only — no payment processing.</p>
+          </div>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <p class="text-[9px] tracking-[0.14em] text-stone-500">ACCOMMODATION</p>
+            <p class="mt-1 break-words text-sm text-stone-200">{{ travel.accommodation || 'Not specified' }}</p>
+          </div>
+          <div>
+            <p class="text-[9px] tracking-[0.14em] text-stone-500">TRANSPORTATION</p>
+            <p class="mt-1 break-words text-sm text-stone-200">{{ travel.transportation || 'Not specified' }}</p>
+          </div>
+          <div>
+            <p class="text-[9px] tracking-[0.14em] text-stone-500">ITINERARY & ACTIVITIES</p>
+            <div *ngIf="travel.itinerary.length; else noItinerary" class="mt-2 space-y-3">
+              <article *ngFor="let day of travel.itinerary" class="border-l border-rose-100/40 pl-3">
+                <p class="text-xs text-rose-100">DAY {{ day.dayNumber }} · {{ day.title }}</p>
+                <p *ngIf="day.description" class="mt-1 text-xs leading-5 text-stone-400">{{ day.description }}</p>
+                <ul *ngIf="day.activities.length"
+                  class="mt-2 list-inside list-disc space-y-1 text-xs leading-5 text-stone-300">
+                  <li *ngFor="let activity of day.activities">{{ activity }}</li>
+                </ul>
+              </article>
+            </div>
+            <ng-template #noItinerary>
+              <p class="mt-1 text-sm text-stone-400">No itinerary activities have been added.</p>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end border-t border-white/10 p-4 sm:p-6">
+        <button type="button" (click)="closeTravelDetails()"
+          class="min-h-11 border border-white/20 px-5 text-xs tracking-[0.1em] text-stone-200 hover:bg-white/5">CLOSE</button>
+      </div>
+    </section>
+  </div>
+</main>
