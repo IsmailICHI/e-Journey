@@ -99,24 +99,21 @@ echo "[3/6] Configuring the local CA..."
 export CAROOT
 mkdir -p "$CAROOT"
 
-if [ ! -f "$CAROOT/rootCA.pem" ] ||
-   [ ! -f "$CAROOT/rootCA-key.pem" ]; then
-    echo "ERROR: Existing mkcert CA is incomplete."
-    echo "Do not create a new CA automatically."
-    exit 1
-fi
-
-echo "Existing CA found. Keeping it."
-echo "Skipping system-wide CA installation because sudo is unavailable."
-
-if [ ! -f "$CAROOT/rootCA.pem" ] ||
-   [ ! -f "$CAROOT/rootCA-key.pem" ]; then
-    echo "ERROR: mkcert CA initialization failed."
-    exit 1
+# Check if the CA files are missing
+if [ ! -f "$CAROOT/rootCA.pem" ] || [ ! -f "$CAROOT/rootCA-key.pem" ]; then
+    echo "No valid CA found. Bootstrapping a new non-root local CA..."
+    
+    # TRUST_STORES="" forces mkcert to only create files in $CAROOT 
+    # and completely skips asking for a sudo password.
+    TRUST_STORES="" "$MKCERT" -install
+else
+    echo "Existing CA found. Keeping it."
 fi
 
 echo "CA directory: $CAROOT"
 echo
+
+
 
 # ------------------------------------------------------------
 # 4. Generate the application certificate
