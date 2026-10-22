@@ -33,21 +33,21 @@ patches:
     patch: |-
       - op: replace
         path: /spec/maxReplicas
-        value: 1
+        value: 4
   - target:
       kind: HorizontalPodAutoscaler
       name: user-service
     patch: |-
       - op: replace
         path: /spec/maxReplicas
-        value: 1
+        value: 4
   - target:
       kind: HorizontalPodAutoscaler
       name: travel-service
     patch: |-
       - op: replace
         path: /spec/maxReplicas
-        value: 1
+        value: 4
   - target:
       kind: Deployment
       name: gateway
