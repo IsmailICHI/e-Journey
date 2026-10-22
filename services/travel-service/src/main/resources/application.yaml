@@ -30,6 +30,9 @@ management:
     export:
       prometheus:
         enabled: true
+  tracing:
+    sampling:
+      probability: 0.1
 
 jwt:
   secret: ${JWT_SECRET:defaultsecretkeydefaultsecretkeydefaultsecretkey}
