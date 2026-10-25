@@ -53,7 +53,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return reject(exchange, HttpStatus.UNAUTHORIZED, "Invalid bearer token");
         }
 
-        return tokenBlacklistService.isBlacklisted(token)
+        String revocationUserId = jwtService.extractUserId(token);
+        if (revocationUserId == null || revocationUserId.isBlank()) {
+            return reject(exchange, HttpStatus.UNAUTHORIZED, "****** has no user identity");
+        }
+
+        return tokenBlacklistService.isBlacklisted(token, revocationUserId)
                 .materialize()
                 .flatMap(isBlacklisted -> {
                     if (isBlacklisted.isOnError()) {
@@ -64,7 +69,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                         return reject(exchange, HttpStatus.UNAUTHORIZED, "Bearer token has been revoked");
                     }
 
-                    String userId = jwtService.extractUserId(token);
+                    String userId = revocationUserId;
                     String email = jwtService.extractEmail(token);
                     if (userId == null || userId.isBlank()) {
                         return reject(exchange, HttpStatus.UNAUTHORIZED, "Bearer token has no user identity");

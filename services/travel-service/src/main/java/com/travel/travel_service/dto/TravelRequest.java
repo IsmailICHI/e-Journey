@@ -2,6 +2,7 @@ package com.travel.travel_service.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -43,9 +44,11 @@ public record TravelRequest(
         List<@NotBlank(message = "Destination cannot be blank") @Size(max = 30, message = "Destination name cannot exceed 30 characters") String> destinations,
 
         @NotNull (message = "Start date is required")
+        @Future(message = "Start date must be after today")
         LocalDate startDate,
 
         @NotNull (message = "End date is required")
+        @Future(message = "End date must be after today")
         LocalDate endDate,
 
         @NotBlank (message = "accommodation is required")

@@ -31,4 +31,14 @@ public class TokenBlacklistService {
         return redisTemplate.hasKey("blacklist:" + token)
                 .defaultIfEmpty(false);
     }
+
+    public Mono<Boolean> isBlacklisted(String token, String userId) {
+        if (!enabled) {
+            return Mono.just(false);
+        }
+        return Mono.zip(
+                isBlacklisted(token),
+                redisTemplate.hasKey("blacklist:user:" + userId).defaultIfEmpty(false),
+                (tokenBlacklisted, userBlacklisted) -> tokenBlacklisted || userBlacklisted);
+    }
 }

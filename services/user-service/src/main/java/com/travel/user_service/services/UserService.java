@@ -30,6 +30,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserTokenRevocationService tokenRevocationService;
 
     public User createAdmin() {
         User admin = new User();
@@ -80,10 +81,10 @@ public class UserService {
     }
 
     public void deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User not found");
-        }
-        userRepository.deleteById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        tokenRevocationService.revokeUserTokens(user.getId());
+        userRepository.delete(user);
     }
 
     public boolean isSelf(Long id, String currentEmail) {

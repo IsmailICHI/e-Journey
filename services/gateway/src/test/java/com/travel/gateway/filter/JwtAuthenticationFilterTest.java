@@ -78,6 +78,16 @@ class JwtAuthenticationFilterTest {
         assertThat(preflightRequest.getResponse().getStatusCode()).isNull();
     }
 
+    @Test
+    void rejectsTokensForRevokedUsers() {
+        tokenBlacklistService.userBlacklisted = true;
+        MockServerWebExchange revokedUser = exchange("/api/v1/users/me", "******", null);
+
+        filter.filter(revokedUser, ignored -> Mono.empty()).block();
+
+        assertThat(revokedUser.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
     private MockServerWebExchange exchange(String path, String authorization, String spoofedUserId) {
         MockServerHttpRequest.BaseBuilder<?> builder = MockServerHttpRequest.get(path);
         if (authorization != null) {
@@ -121,13 +131,15 @@ class JwtAuthenticationFilterTest {
     }
 
     private static class StubTokenBlacklistService extends TokenBlacklistService {
+        private boolean userBlacklisted;
+
         StubTokenBlacklistService() {
             super(null, true);
         }
 
         @Override
-        public Mono<Boolean> isBlacklisted(String token) {
-            return Mono.just(false);
+        public Mono<Boolean> isBlacklisted(String token, String userId) {
+            return Mono.just(userBlacklisted);
         }
     }
 }

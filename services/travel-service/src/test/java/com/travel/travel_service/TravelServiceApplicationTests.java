@@ -5,6 +5,7 @@ import com.travel.travel_service.dto.ItineraryRequest;
 import com.travel.travel_service.dto.TravelRequest;
 import com.travel.travel_service.repository.TravelRepository;
 import com.travel.travel_service.services.TravelService;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -151,10 +152,14 @@ class TravelServiceApplicationTests {
 	@Test
 	@WithMockUser(roles = "ADMIN")
 	void invalidDateRangeReturnsSpecifiedBadRequest() throws Exception {
+		LocalDate startDate = LocalDate.now().plusDays(10);
+		LocalDate endDate = LocalDate.now().plusDays(1);
 		mockMvc.perform(post("/api/v1/admin/travels")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(
-						"{\"title\":\"Test trip\",\"city\":\"Rabat\",\"country\":\"Morocco\",\"duration\":3,\"paymentMethod\":\"Stripe\",\"startDate\":\"2026-12-10\",\"endDate\":\"2026-12-01\",\"accommodation\":\"Hotel\",\"transportation\":\"Bus\"}"))
+						"{\"title\":\"Test trip\",\"city\":\"Rabat\",\"country\":\"Morocco\",\"duration\":3,\"paymentMethod\":\"Stripe\",\"startDate\":\""
+								+ startDate + "\",\"endDate\":\"" + endDate
+								+ "\",\"accommodation\":\"Hotel\",\"transportation\":\"Bus\"}"))
 				// .content("{\"title\":\"Test
 				// trip\",\"city\":\"Rabat\",\"country\":\"Morocco\",\"duration\":3,\"paymentMethod\":\"Stripe\",\"startDate\":\"2026-12-10\",\"endDate\":\"2026-12-01\"}"))
 				.andExpect(status().isBadRequest())
@@ -164,6 +169,34 @@ class TravelServiceApplicationTests {
 						.value("Bad Request"))
 				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message",
 						org.hamcrest.Matchers.containsString("End date")));
+	}
+
+	@Test
+	@WithMockUser(roles = "ADMIN")
+	void rejectsTravelDatesThatAreNotAfterToday() throws Exception {
+		LocalDate today = LocalDate.now();
+		LocalDate tomorrow = today.plusDays(1);
+
+		mockMvc.perform(post("/api/v1/admin/travels")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(validTravelJson(today, tomorrow)))
+				.andExpect(status().isBadRequest())
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+						.jsonPath("$.validationErrors.startDate").exists());
+
+		mockMvc.perform(post("/api/v1/admin/travels")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(validTravelJson(tomorrow, today)))
+				.andExpect(status().isBadRequest())
+				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+						.jsonPath("$.validationErrors.endDate").exists());
+	}
+
+	private String validTravelJson(LocalDate startDate, LocalDate endDate) {
+		return "{\"title\":\"Future trip\",\"city\":\"Rabat\",\"country\":\"Morocco\","
+				+ "\"duration\":3,\"paymentMethod\":\"Stripe\",\"startDate\":\"" + startDate
+				+ "\",\"endDate\":\"" + endDate
+				+ "\",\"accommodation\":\"Hotel\",\"transportation\":\"Bus\"}";
 	}
 
 	@Test
