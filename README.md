@@ -18,7 +18,7 @@ The payment and recommendation paths are configured in the gateway, but those
 services are not part of the active local Compose or Kubernetes application
 deployment. Payment is intentionally excluded from the current CI/CD pipeline
 and k3s manifests.
-
+//
 ## Architecture
 
 ```text
