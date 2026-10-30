@@ -11,7 +11,7 @@ import { FeedbackService } from '../../core/services/feedback.service';
   templateUrl: './navbar.component.html'
 })
 export class NavbarComponent implements OnInit {
-  @Input() activePage: 'home' | 'admin' | 'profile' | 'login' | 'register' = 'home';
+  @Input() activePage: 'home' | 'admin' | 'profile' | 'login' | 'register' | 'traveler-dashboard' | 'travel-manager-dashboard' = 'home';
 
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -36,6 +36,14 @@ export class NavbarComponent implements OnInit {
 
   get isAdmin(): boolean {
     return this.authService.isSessionVerified && this.authService.isAdmin;
+  }
+
+  get isTravelManager(): boolean {
+    return this.authService.isSessionVerified && this.authService.isTravelManager;
+  }
+
+  get isTraveler(): boolean {
+    return this.authService.isSessionVerified && this.authService.isTraveler;
   }
 
   get isLoggedIn(): boolean {

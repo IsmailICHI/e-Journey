@@ -7,11 +7,13 @@ import { UserProfileResponse } from '../models/user.model';
 
 const TOKEN_KEY = 'e-journey.token';
 
+type NormalizedRole = 'ADMIN' | 'TRAVEL_MANAGER' | 'TRAVELER' | 'USER';
+
 interface TokenClaims {
   sub: string;
   exp: number;
   userId: number;
-  role: 'ADMIN' | 'USER';
+  role: NormalizedRole;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -23,7 +25,7 @@ export class AuthService {
     return this.http.post<AuthResponse>(`${environment.apiUrl}/api/v1/auth/login`, request).pipe(
       tap((response) => {
         const claims = this.readClaims(response.token);
-        const responseRole = response.role.toUpperCase().replace(/^ROLE_/, '');
+        const responseRole = normalizeRole(response.role);
         if (!claims || claims.role !== responseRole || claims.sub.toLowerCase() !== request.email.toLowerCase()) {
           throw new Error('The authentication service returned an invalid or incomplete JWT.');
         }
@@ -43,8 +45,8 @@ export class AuthService {
     return this.http.get<UserProfileResponse>(`${environment.apiUrl}/api/v1/users/me`).pipe(
       tap((profile) => {
         const claims = this.readClaims(token);
-        const profileRole = profile.role.toUpperCase().replace(/^ROLE_/, '');
-        if (!claims || claims.sub.toLowerCase() !== profile.email.toLowerCase() || claims.role !== profileRole) {
+        const profileRole = normalizeRole(profile.role);
+        if (!claims || claims.sub.toLowerCase() !== profile.email.toLowerCase() || !profileRole || claims.role !== profileRole) {
           this.logout();
           throw new Error('The session does not match the authenticated account.');
         }
@@ -96,6 +98,14 @@ export class AuthService {
     return this.claims?.role === 'ADMIN';
   }
 
+  get isTravelManager(): boolean {
+    return this.claims?.role === 'TRAVEL_MANAGER';
+  }
+
+  get isTraveler(): boolean {
+    return this.claims?.role === 'TRAVELER' || this.claims?.role === 'USER';
+  }
+
   logout(): void {
     this.verifiedToken.set(null);
     localStorage.removeItem(TOKEN_KEY);
@@ -126,7 +136,7 @@ export class AuthService {
       }
       const claims = payload as Record<string, unknown>;
       const role = typeof claims['role'] === 'string'
-        ? claims['role'].toUpperCase().replace(/^ROLE_/, '')
+        ? normalizeRole(claims['role'])
         : '';
       const userId = Number(claims['userId']);
       if (
@@ -136,7 +146,7 @@ export class AuthService {
         || claims['exp'] * 1000 <= Date.now()
         || !Number.isSafeInteger(userId)
         || userId <= 0
-        || (role !== 'ADMIN' && role !== 'USER')
+        || !isSupportedRole(role)
       ) {
         return null;
       }
@@ -145,4 +155,25 @@ export class AuthService {
       return null;
     }
   }
+}
+
+function normalizeRole(value: string): NormalizedRole | '' {
+  const withoutPrefix = value.trim().toUpperCase().replace(/^ROLE_/, '');
+  const normalized = withoutPrefix
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  const canonical = normalized
+    .replace('TRAVELMANAGER', 'TRAVEL_MANAGER')
+    .replace('TRAVELERUSER', 'TRAVELER');
+
+  if (canonical === 'ADMIN' || canonical === 'TRAVEL_MANAGER' || canonical === 'TRAVELER' || canonical === 'USER') {
+    return canonical as NormalizedRole;
+  }
+  return '';
+}
+
+function isSupportedRole(value: string): value is NormalizedRole {
+  return value === 'ADMIN' || value === 'TRAVEL_MANAGER' || value === 'TRAVELER' || value === 'USER';
 }
