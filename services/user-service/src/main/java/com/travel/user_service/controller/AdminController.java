@@ -17,7 +17,7 @@ import lombok.Data;
 @Data
 @RestController
 @RequestMapping("/api/v1/admin")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','TRAVEL_MANAGER')")
 @Validated
 public class AdminController {
 

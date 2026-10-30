@@ -38,7 +38,7 @@ public class UserService {
         admin.setFullName("admin");
         admin.setPassword(passwordEncoder.encode("Admin123456@@"));
 
-        admin.setRole(Role.Admin);
+        admin.setRole(Role.ADMIN);
         admin.setState(true);
 
         return userRepository.save(admin);
