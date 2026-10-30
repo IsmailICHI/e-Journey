@@ -1,7 +1,7 @@
 server:
   port: 8089
   shutdown: graceful
-
+  
 spring:
   application:
     name: gateway

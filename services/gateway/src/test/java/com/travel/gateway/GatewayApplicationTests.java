@@ -39,6 +39,16 @@ class GatewayApplicationTests {
 		assertThat(authoritiesFor(userJwt)).containsExactly("ROLE_USER");
 	}
 
+	@Test
+	void fallsBackToRolesClaimWhenRoleIsAbsent() {
+		Jwt rolesOnlyJwt = Jwt.withTokenValue("roles-token")
+				.header("alg", "HS256")
+				.claim("roles", List.of("TRAVEL_MANAGER"))
+				.build();
+
+		assertThat(authoritiesFor(rolesOnlyJwt)).containsExactly("ROLE_TRAVEL_MANAGER");
+	}
+
 	private List<String> authoritiesFor(Jwt jwt) {
 		return jwtAuthenticationConverter.convert(jwt)
 				.block()
