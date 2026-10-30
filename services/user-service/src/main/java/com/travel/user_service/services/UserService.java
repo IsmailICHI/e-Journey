@@ -1,6 +1,7 @@
 package com.travel.user_service.services;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,6 +14,7 @@ import com.travel.user_service.dto.admin.UsersDto;
 import com.travel.user_service.dto.admin.UserPageResponse;
 import com.travel.user_service.dto.admin.UserStatisticsResponse;
 import com.travel.user_service.dto.profile.UserProfileResponse;
+import com.travel.user_service.exceptions.BadRequestException;
 import com.travel.user_service.models.Role;
 
 import com.travel.user_service.models.User;
@@ -73,6 +75,33 @@ public class UserService {
     public UserProfileResponse getUserProfile(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return new UserProfileResponse(
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole().name(),
+                user.getState());
+    }
+
+    public UserProfileResponse updateUserRole(Long id, String roleInput) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        String normalizedRole = roleInput == null ? "" : roleInput.trim();
+        if (normalizedRole.isBlank()) {
+            throw new BadRequestException("Role is required");
+        }
+
+        Role role;
+        try {
+            role = Role.valueOf(normalizedRole.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Unsupported role: " + normalizedRole);
+        }
+
+        user.setRole(role);
+        userRepository.save(user);
+        tokenRevocationService.revokeUserTokens(user.getId());
+
         return new UserProfileResponse(
                 user.getFullName(),
                 user.getEmail(),
