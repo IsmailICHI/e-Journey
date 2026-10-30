@@ -77,6 +77,7 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
     { id: 'travels', label: 'Travels' },
     { id: 'users', label: 'Users' }
   ];
+  readonly roleOptions = ['ADMIN', 'TRAVEL_MANAGER', 'TRAVELER', 'USER'] as const;
 
   activeTab: AdminTab = 'travels';
   users: UserResponse[] = [];
@@ -94,6 +95,7 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
   savingTravel = false;
   pendingDelete: DeleteConfirmation | null = null;
   deleting = false;
+  updatingRoleIds = new Set<number>();
   errorMessage = '';
   successMessage = '';
 
@@ -270,6 +272,31 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
       detail: `${travel.city}, ${travel.country}`
     };
     this.clearMessages();
+  }
+
+  updateUserRole(user: UserResponse, nextRole: string): void {
+    if (!nextRole || nextRole === user.role || this.updatingRoleIds.has(user.id)) {
+      return;
+    }
+
+    this.updatingRoleIds.add(user.id);
+    this.clearMessages();
+    this.userService.updateUserRole(user.id, nextRole).subscribe({
+      next: (updatedUser) => {
+        this.users = this.users.map((item) => item.id === user.id
+          ? { ...item, role: updatedUser.role }
+          : item);
+        this.successMessage = `User role changed to ${updatedUser.role}. The next login will use the updated permissions.`;
+        this.feedback.showSuccess(`Role for "${user.fullName}" updated to ${updatedUser.role}.`, 'Role Updated');
+        this.updatingRoleIds.delete(user.id);
+      },
+      error: (error: unknown) => {
+        this.errorMessage = getApiErrorMessage(error);
+        this.feedback.showFromApiError(error, 'Role Update Failed');
+        this.users = this.users.map((item) => item.id === user.id ? { ...item, role: user.role } : item);
+        this.updatingRoleIds.delete(user.id);
+      }
+    });
   }
 
   deleteUser(user: UserResponse): void {

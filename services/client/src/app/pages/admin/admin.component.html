@@ -209,8 +209,9 @@
       <div class="mb-5">
         <p class="text-[10px] tracking-[0.2em] text-rose-100">ACCOUNT DIRECTORY</p>
         <h2 class="mt-2 font-sans-clean text-2xl font-light">Manage users</h2>
-        <p class="mt-2 text-sm text-stone-400">Administrators can review accounts and delete them. User creation and
-          editing are not available here.</p>
+        <p class="mt-2 text-sm text-stone-400">Administrators can review accounts, update roles, and delete users.
+          Role changes are applied immediately in the database and revoke existing tokens so the next login picks up the
+          new permissions.</p>
       </div>
       <p *ngIf="loadingUsers && users.length === 0" class="py-8 text-sm text-stone-400">Loading users…</p>
       <div *ngIf="users.length > 0" class="hidden overflow-x-auto border border-white/10 sm:block">
@@ -228,7 +229,11 @@
             <tr *ngFor="let user of users">
               <td class="px-4 py-4">{{ user.fullName }}</td>
               <td class="px-4 py-4 text-stone-300">{{ user.email }}</td>
-              <td class="px-4 py-4"><span class="border border-white/15 px-2 py-1 text-[10px]">{{ user.role }}</span>
+              <td class="px-4 py-4">
+                <select [ngModel]="user.role" (ngModelChange)="updateUserRole(user, $event)" [disabled]="updatingRoleIds.has(user.id)"
+                  class="min-w-[150px] border border-white/15 bg-[#0f0e0d] px-2 py-2 text-[10px] tracking-[0.08em] text-stone-100 outline-none transition hover:border-rose-100/40 disabled:opacity-60">
+                  <option *ngFor="let roleOption of roleOptions" [value]="roleOption">{{ roleOption }}</option>
+                </select>
               </td>
               <td class="px-4 py-4 text-xs" [class.text-emerald-200]="user.state" [class.text-stone-500]="!user.state">
                 {{ user.state ? 'Active' : 'Not set' }}</td>
@@ -247,7 +252,10 @@
               <h3 class="break-words text-sm text-stone-100">{{ user.fullName }}</h3>
               <p class="mt-1 break-all text-xs text-stone-400">{{ user.email }}</p>
             </div>
-            <span class="shrink-0 border border-white/15 px-2 py-1 text-[9px]">{{ user.role }}</span>
+            <select [ngModel]="user.role" (ngModelChange)="updateUserRole(user, $event)" [disabled]="updatingRoleIds.has(user.id)"
+              class="shrink-0 border border-white/15 bg-[#0f0e0d] px-2 py-1 text-[9px] text-stone-100 outline-none transition hover:border-rose-100/40 disabled:opacity-60">
+              <option *ngFor="let roleOption of roleOptions" [value]="roleOption">{{ roleOption }}</option>
+            </select>
           </div>
           <div class="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
             <span class="text-xs" [class.text-emerald-200]="user.state" [class.text-stone-500]="!user.state">{{
