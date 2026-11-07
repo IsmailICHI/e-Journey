@@ -51,7 +51,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                 .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register").permitAll()
-                .requestMatchers("/api/v1/admin", "/api/v1/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/admin", "/api/v1/admin/**").hasAnyRole("ADMIN", "TRAVEL_MANAGER")
                 .requestMatchers("/api/v1/users/**").authenticated()
                 .anyRequest().permitAll())
             .oauth2ResourceServer(resourceServer -> resourceServer

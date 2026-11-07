@@ -27,6 +27,10 @@ export class UserService {
     return this.http.get<UserProfileResponse>(`${environment.apiUrl}/api/v1/users/me`);
   }
 
+  updateUserRole(id: number, role: string): Observable<UserProfileResponse> {
+    return this.http.patch<UserProfileResponse>(`${this.usersUrl}/${id}/role`, { role });
+  }
+
   deleteUser(id: number): Observable<void> {
     return this.http.delete<void>(`${this.usersUrl}/${id}`);
   }

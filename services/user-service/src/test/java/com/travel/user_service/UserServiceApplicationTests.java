@@ -54,7 +54,7 @@ class UserServiceApplicationTests {
 		user.setFullName("Profile Test");
 		user.setEmail("profile-" + java.util.UUID.randomUUID() + "@example.test");
 		user.setPassword("not-used-by-this-test");
-		user.setRole(Role.User);
+		user.setRole(Role.TRAVELER);
 		user.setState(true);
 		user = userRepository.save(user);
 
@@ -64,7 +64,7 @@ class UserServiceApplicationTests {
 					.andExpect(status().isOk())
 					.andExpect(jsonPath("$.fullName").value("Profile Test"))
 					.andExpect(jsonPath("$.email").value(user.getEmail()))
-					.andExpect(jsonPath("$.role").value("User"))
+					.andExpect(jsonPath("$.role").value("TRAVELER"))
 					.andExpect(jsonPath("$.state").value(true));
 		} finally {
 			userRepository.deleteById(user.getId());
@@ -76,19 +76,19 @@ class UserServiceApplicationTests {
 		mockMvc.perform(get("/api/v1/admin/users"))
 				.andExpect(status().isUnauthorized());
 		mockMvc.perform(get("/api/v1/admin/users")
-				.header("Authorization", "Bearer " + tokenFor(Role.User)))
+				.header("Authorization", "Bearer " + tokenFor(Role.TRAVELER)))
 				.andExpect(status().isForbidden());
 		mockMvc.perform(get("/api/v1/admin/users")
-				.header("Authorization", "Bearer " + tokenFor(Role.Admin)))
+				.header("Authorization", "Bearer " + tokenFor(Role.ADMIN)))
 				.andExpect(status().isOk());
 	}
 
 	@Test
 	void onlyAdminsCanDeleteUsersAndCannotCreateOrUpdateThem() throws Exception {
 		mockMvc.perform(delete("/api/v1/admin/users/1")
-				.header("Authorization", "Bearer " + tokenFor(Role.User)))
+				.header("Authorization", "Bearer " + tokenFor(Role.TRAVELER)))
 				.andExpect(status().isForbidden());
-		String adminToken = tokenFor(Role.Admin);
+		String adminToken = tokenFor(Role.ADMIN);
 		mockMvc.perform(delete("/api/v1/admin/users/999999")
 				.header("Authorization", "Bearer " + adminToken))
 				.andExpect(status().isNotFound());
@@ -105,7 +105,7 @@ class UserServiceApplicationTests {
 		admin.setFullName("Self Delete " + java.util.UUID.randomUUID());
 		admin.setEmail("self-delete-" + java.util.UUID.randomUUID() + "@example.test");
 		admin.setPassword("not-used-by-this-test");
-		admin.setRole(Role.Admin);
+		admin.setRole(Role.ADMIN);
 		admin.setState(true);
 		admin = userRepository.save(admin);
 		try {

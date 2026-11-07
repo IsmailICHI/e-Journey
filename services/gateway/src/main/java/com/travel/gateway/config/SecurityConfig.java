@@ -51,7 +51,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/places/public").permitAll()
                         .pathMatchers("/actuator/prometheus", "/actuator/health").permitAll()
-                        .pathMatchers("/api/v1/admin", "/api/v1/admin/**").hasRole("ADMIN")
+                        .pathMatchers("/api/v1/admin", "/api/v1/admin/**").hasAnyRole("ADMIN", "TRAVEL_MANAGER")
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
@@ -84,6 +84,9 @@ public class SecurityConfig {
                 authorities.addAll(scopeAuthorities);
             }
             addRoleAuthority(jwt.getClaims().get("role"), authorities);
+            if (authorities.isEmpty() || !jwt.getClaims().containsKey("role")) {
+                addRoleAuthority(jwt.getClaims().get("roles"), authorities);
+            }
             return authorities;
         });
 
@@ -91,10 +94,31 @@ public class SecurityConfig {
     }
 
     private static void addRoleAuthority(Object roleValue, Collection<GrantedAuthority> authorities) {
-        if (!(roleValue instanceof String role)) {
+        if (roleValue == null) {
             return;
         }
 
+        if (roleValue instanceof String role) {
+            addNormalizedAuthority(role, authorities);
+            return;
+        }
+
+        if (roleValue instanceof Iterable<?> roles) {
+            for (Object role : roles) {
+                if (role instanceof String roleName) {
+                    addNormalizedAuthority(roleName, authorities);
+                }
+            }
+        } else if (roleValue.getClass().isArray()) {
+            for (Object role : (Object[]) roleValue) {
+                if (role instanceof String roleName) {
+                    addNormalizedAuthority(roleName, authorities);
+                }
+            }
+        }
+    }
+
+    private static void addNormalizedAuthority(String role, Collection<GrantedAuthority> authorities) {
         String normalizedRole = role.trim().toUpperCase(Locale.ROOT);
         if (normalizedRole.startsWith("ROLE_")) {
             normalizedRole = normalizedRole.substring(5);

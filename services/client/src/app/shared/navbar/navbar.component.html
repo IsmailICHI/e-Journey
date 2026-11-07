@@ -45,6 +45,30 @@
         >PROFILE</a>
 
         <a
+          *ngIf="isTraveler"
+          routerLink="/traveler-dashboard"
+          (click)="closeMenu()"
+          class="px-3 py-1 font-sans text-[11px] font-bold tracking-[0.14em] uppercase rounded-none transition-none"
+          [ngClass]="{
+            'bg-stone-800 text-white': activePage === 'traveler-dashboard',
+            'text-stone-400 hover:bg-stone-900 hover:text-stone-200': activePage !== 'traveler-dashboard'
+          }"
+          [attr.aria-current]="activePage === 'traveler-dashboard' ? 'page' : null"
+        >TRAVELER</a>
+
+        <a
+          *ngIf="isTravelManager || isAdmin"
+          routerLink="/travel-manager-dashboard"
+          (click)="closeMenu()"
+          class="px-3 py-1 font-sans text-[11px] font-bold tracking-[0.14em] uppercase rounded-none transition-none"
+          [ngClass]="{
+            'bg-stone-800 text-white': activePage === 'travel-manager-dashboard',
+            'text-stone-400 hover:bg-stone-900 hover:text-stone-200': activePage !== 'travel-manager-dashboard'
+          }"
+          [attr.aria-current]="activePage === 'travel-manager-dashboard' ? 'page' : null"
+        >MANAGER</a>
+
+        <a
           *ngIf="isAdmin"
           routerLink="/admin"
           (click)="closeMenu()"
@@ -139,6 +163,30 @@
         }"
         [attr.aria-current]="activePage === 'profile' ? 'page' : null"
       >PROFILE</a>
+
+      <a
+        *ngIf="isTraveler"
+        routerLink="/traveler-dashboard"
+        (click)="closeMenu()"
+        class="px-3 py-2 font-sans text-[11px] font-bold tracking-[0.16em] uppercase rounded-none"
+        [ngClass]="{
+          'bg-stone-800 text-[#c5a059]': activePage === 'traveler-dashboard',
+          'text-stone-300 hover:bg-stone-900 hover:text-white': activePage !== 'traveler-dashboard'
+        }"
+        [attr.aria-current]="activePage === 'traveler-dashboard' ? 'page' : null"
+      >TRAVELER</a>
+
+      <a
+        *ngIf="isTravelManager || isAdmin"
+        routerLink="/travel-manager-dashboard"
+        (click)="closeMenu()"
+        class="px-3 py-2 font-sans text-[11px] font-bold tracking-[0.16em] uppercase rounded-none"
+        [ngClass]="{
+          'bg-stone-800 text-[#c5a059]': activePage === 'travel-manager-dashboard',
+          'text-stone-300 hover:bg-stone-900 hover:text-white': activePage !== 'travel-manager-dashboard'
+        }"
+        [attr.aria-current]="activePage === 'travel-manager-dashboard' ? 'page' : null"
+      >MANAGER</a>
 
       <a
         *ngIf="isAdmin"
