@@ -1,31 +1,73 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { NavbarComponent } from '../../shared/navbar/navbar.component';
+import { getApiErrorMessage } from '../../core/interceptors/api-error';
+import { TravelResponse } from '../../core/models/travel.model';
+import { BookingService } from '../../core/services/booking.service';
+import { TravelService } from '../../core/services/travel.service';
 
 @Component({
   selector: 'app-traveler-dashboard',
   standalone: true,
-  imports: [CommonModule, NavbarComponent],
+  imports: [CommonModule, FormsModule, NavbarComponent],
   templateUrl: './traveler-dashboard.component.html'
 })
-export class TravelerDashboardComponent {
-  readonly stats = [
-    { label: 'Trips booked', value: '12', delta: '+3 this quarter' },
-    { label: 'Reports filed', value: '2', delta: '1 pending review' },
-    { label: 'Cancellations', value: '1', delta: 'Within cutoff window' },
-    { label: 'Preferred payment', value: 'Visa •••• 4242', delta: 'Preferred' }
-  ];
+export class TravelerDashboardComponent implements OnInit {
+  private readonly travelService = inject(TravelService);
+  private readonly bookingService = inject(BookingService);
+  travels: TravelResponse[] = [];
+  loading = false;
+  search = '';
+  errorMessage = '';
+  successMessage = '';
+  readonly bookingTravelIds = new Set<number>();
 
-  readonly capabilities = [
-    'Autocomplete search across destinations, dates, and travel themes',
-    'Personalized recommendations powered by trip history and community feedback',
-    'Secure checkout with cards, wallets, and invoice payment methods',
-    'Travel subscriptions and cancellation policies monitored before departure'
-  ];
+  ngOnInit(): void {
+    this.loadTravels();
+  }
 
-  readonly activity = [
-    { title: 'City escape to Kyoto', time: 'Booked 4 days ago', status: 'Confirmed' },
-    { title: 'Ski retreat in Zermatt', time: 'Rated 5/5 by travelers', status: 'Reviewed' },
-    { title: 'Beach tour in Bali', time: 'Report closed by support', status: 'Resolved' }
-  ];
+  get filteredTravels(): TravelResponse[] {
+    const query = this.search.trim().toLowerCase();
+    if (!query) {
+      return this.travels;
+    }
+    return this.travels.filter((travel) =>
+      [travel.title, travel.city, travel.country, ...travel.destinations]
+        .some((value) => value.toLowerCase().includes(query)));
+  }
+
+  loadTravels(): void {
+    this.loading = true;
+    this.errorMessage = '';
+    this.travelService.getPublicTravels().subscribe({
+      next: (travels) => {
+        this.travels = travels;
+        this.loading = false;
+      },
+      error: (error: unknown) => {
+        this.errorMessage = getApiErrorMessage(error);
+        this.loading = false;
+      }
+    });
+  }
+
+  bookTravel(travel: TravelResponse): void {
+    if (this.bookingTravelIds.has(travel.travelId)) {
+      return;
+    }
+    this.bookingTravelIds.add(travel.travelId);
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.bookingService.createBooking(travel.travelId).subscribe({
+      next: (booking) => {
+        this.successMessage = `Booking #${booking.id} was created for ${travel.title}.`;
+        this.bookingTravelIds.delete(travel.travelId);
+      },
+      error: (error: unknown) => {
+        this.errorMessage = getApiErrorMessage(error);
+        this.bookingTravelIds.delete(travel.travelId);
+      }
+    });
+  }
 }

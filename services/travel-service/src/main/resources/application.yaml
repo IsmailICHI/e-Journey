@@ -5,6 +5,17 @@ server:
 spring:
   application:
     name: travel-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: travel-service-booking-graph
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.travel.booking_service.events
+        spring.json.value.default.type: com.travel.travel_service.events.BookingCreatedEvent
+        spring.json.use.type.headers: false
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/travel_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
@@ -36,3 +47,11 @@ management:
 
 jwt:
   secret: ${JWT_SECRET:defaultsecretkeydefaultsecretkeydefaultsecretkey}
+
+app:
+  booking:
+    events-topic: ${BOOKING_EVENTS_TOPIC:booking.created.v1}
+  neo4j:
+    uri: ${NEO4J_URI:bolt://localhost:7687}
+    username: ${NEO4J_USERNAME:neo4j}
+    password: ${NEO4J_PASSWORD:travelplan-local}

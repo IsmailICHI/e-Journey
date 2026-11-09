@@ -45,7 +45,8 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/api/v1/admin/travels/**").hasRole("ADMIN")
+                    .requestMatchers("/api/v1/admin/travels", "/api/v1/admin/travels/**")
+                    .hasAnyRole("ADMIN", "TRAVEL_MANAGER")
                     .anyRequest().authenticated())
             .oauth2ResourceServer(resourceServer -> resourceServer
                     .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
