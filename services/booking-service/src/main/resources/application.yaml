@@ -32,6 +32,9 @@ app:
   outbox:
     publish-delay-ms: ${BOOKING_OUTBOX_PUBLISH_DELAY_MS:1000}
 
+travel-service:
+  base-url: ${TRAVEL_SERVICE_URL:http://localhost:8082}
+
 management:
   endpoints:
     web:

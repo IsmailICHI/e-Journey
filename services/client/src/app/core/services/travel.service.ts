@@ -14,6 +14,10 @@ export class TravelService {
     return this.http.get<PageResponse<TravelResponse>>(this.travelsUrl, { params: { page } });
   }
 
+  getTravelAnalytics(): Observable<TravelResponse[]> {
+    return this.http.get<TravelResponse[]>(`${this.travelsUrl}/analytics`);
+  }
+
   getPublicTravels(): Observable<TravelResponse[]> {
     return this.http.get<TravelResponse[]>(`${environment.apiUrl}/api/v1/places/public`);
   }

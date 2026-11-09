@@ -14,6 +14,7 @@ import com.travel.booking_service.model.Booking;
 import com.travel.booking_service.model.BookingEventOutbox;
 import com.travel.booking_service.repository.BookingEventOutboxRepository;
 import com.travel.booking_service.repository.BookingRepository;
+import com.travel.booking_service.client.TravelDetailsClient;
 
 @Service
 public class BookingService {
@@ -21,21 +22,28 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final BookingEventOutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
+    private final TravelDetailsClient travelDetailsClient;
 
     public BookingService(
             BookingRepository bookingRepository,
             BookingEventOutboxRepository outboxRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            TravelDetailsClient travelDetailsClient) {
         this.bookingRepository = bookingRepository;
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
+        this.travelDetailsClient = travelDetailsClient;
     }
 
     @Transactional
-    public BookingResponse createBooking(Long userId, CreateBookingRequest request) {
+    public BookingResponse createBooking(Long userId, CreateBookingRequest request, String authorization) {
+        TravelDetailsClient.TravelSnapshot travel = travelDetailsClient.getTravel(request.travelId(), authorization);
         Booking booking = new Booking();
         booking.setUserId(userId);
-        booking.setTravelId(request.travelId());
+        booking.setTravelId(travel.id());
+        booking.setTravelTitle(travel.title());
+        booking.setPriceMad(travel.priceMad());
+        booking.setManagerId(travel.managerId());
         booking = bookingRepository.save(booking);
 
         BookingCreatedEvent event = new BookingCreatedEvent(
@@ -51,5 +59,33 @@ public class BookingService {
         }
 
         return BookingResponse.from(booking);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<BookingResponse> getBookingsForUser(Long userId) {
+        return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(BookingResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<BookingResponse> getAllBookings() {
+        return bookingRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(BookingResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Booking getOwnedBooking(Long bookingId, Long userId) {
+        return bookingRepository.findByIdAndUserId(bookingId, userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Booking not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public Booking getBooking(Long bookingId) {
+        return bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Booking not found"));
     }
 }

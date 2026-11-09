@@ -28,8 +28,113 @@
         {{ tab.label }}
       </button>
     </nav>
+    <div *ngIf="errorMessage || successMessage" class="mb-6 space-y-2">
+      <p *ngIf="errorMessage" class="border border-red-200/20 bg-red-950/30 px-4 py-3 text-sm text-red-200">{{ errorMessage }}</p>
+      <p *ngIf="successMessage" class="border border-emerald-200/20 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-100">{{ successMessage }}</p>
+    </div>
 
+    <section *ngIf="activeTab === 'overview'" class="space-y-7">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p class="text-[10px] tracking-[0.2em] text-rose-100">EXECUTIVE VIEW · LAST 3 MONTHS</p>
+          <h2 class="mt-2 font-sans-clean text-2xl font-light">Operations & performance</h2>
+        </div>
+        <button type="button" (click)="loadOversight()" [disabled]="loadingOversight"
+          class="border border-white/15 px-4 py-2.5 text-[10px] tracking-[0.1em] text-stone-300 hover:text-white disabled:opacity-50">
+          {{ loadingOversight ? 'UPDATING…' : 'REFRESH DATA' }}
+        </button>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="border border-white/10 bg-white/[0.03] p-5">
+          <p class="text-[10px] tracking-[0.14em] text-stone-400">PAID INCOME · 3 MONTHS</p>
+          <p class="mt-3 text-3xl font-light text-white">{{ paymentAnalytics?.totalIncome ?? 0 | currency:'MAD':'symbol':'1.0-2' }}</p>
+          <p class="mt-2 text-xs text-stone-500">Confirmed PayPal captures only</p>
+        </article>
+        <article class="border border-white/10 bg-white/[0.03] p-5">
+          <p class="text-[10px] tracking-[0.14em] text-stone-400">TRAVELS ORGANIZED</p>
+          <p class="mt-3 text-3xl font-light text-white">{{ allTravelRecords.length }}</p>
+          <p class="mt-2 text-xs text-stone-500">Across administrators and managers</p>
+        </article>
+        <article class="border border-white/10 bg-white/[0.03] p-5">
+          <p class="text-[10px] tracking-[0.14em] text-stone-400">BOOKINGS RECORDED</p>
+          <p class="mt-3 text-3xl font-light text-white">{{ bookings.length }}</p>
+          <p class="mt-2 text-xs text-stone-500">Complete booking history</p>
+        </article>
+        <article class="border border-white/10 bg-white/[0.03] p-5">
+          <p class="text-[10px] tracking-[0.14em] text-stone-400">OPEN REPORTS</p>
+          <p class="mt-3 text-3xl font-light text-white">{{ openReportCount }}</p>
+          <p class="mt-2 text-xs text-stone-500">Traveler concerns awaiting review</p>
+        </article>
+      </div>
 
+      <div class="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <section class="border border-white/10 bg-white/[0.025]">
+          <div class="border-b border-white/10 px-5 py-4">
+            <p class="text-[10px] tracking-[0.16em] text-rose-100">MONTHLY REVENUE</p>
+            <h3 class="mt-1 text-lg font-light">Captured income · MAD</h3>
+          </div>
+          <div *ngIf="paymentAnalytics as analytics" class="space-y-4 p-5">
+            <div *ngFor="let month of analytics.monthlyIncome" class="grid grid-cols-[68px_1fr_auto] items-center gap-3">
+              <span class="text-xs text-stone-400">{{ month.month }}</span>
+              <div class="h-2 bg-white/10">
+                <div class="h-full bg-rose-100/80" [style.width]="incomeBarWidth(month.income)"></div>
+              </div>
+              <span class="text-xs text-stone-200">{{ month.income | currency:'MAD':'symbol':'1.0-0' }}</span>
+            </div>
+            <p *ngIf="!analytics.totalIncome" class="text-xs text-stone-500">No completed PayPal payments in this period.</p>
+          </div>
+          <p *ngIf="!paymentAnalytics && !loadingOversight" class="p-5 text-sm text-stone-500">Income analytics are unavailable.</p>
+        </section>
+
+        <section class="border border-white/10 bg-white/[0.025]">
+          <div class="border-b border-white/10 px-5 py-4">
+            <p class="text-[10px] tracking-[0.16em] text-rose-100">TOP-PERFORMING TRAVELS</p>
+            <h3 class="mt-1 text-lg font-light">By captured income</h3>
+          </div>
+          <div *ngIf="topTravels.length" class="divide-y divide-white/10">
+            <div *ngFor="let travel of topTravels; let index = index" class="flex items-center justify-between gap-4 px-5 py-4">
+              <div class="flex min-w-0 items-center gap-3">
+                <span class="text-xs text-stone-500">0{{ index + 1 }}</span>
+                <div class="min-w-0">
+                  <p class="truncate text-sm text-stone-100">{{ travel.title }}</p>
+                  <p class="mt-1 text-[10px] text-stone-500">{{ travel.bookings }} bookings</p>
+                </div>
+              </div>
+              <span class="shrink-0 text-sm text-rose-100">{{ travel.income | currency:'MAD':'symbol':'1.0-0' }}</span>
+            </div>
+          </div>
+          <p *ngIf="!topTravels.length" class="p-5 text-sm text-stone-500">No completed travel payments to rank yet.</p>
+        </section>
+      </div>
+
+      <section class="border border-white/10 bg-white/[0.025]">
+        <div class="flex flex-wrap items-end justify-between gap-3 border-b border-white/10 px-5 py-4">
+          <div>
+            <p class="text-[10px] tracking-[0.16em] text-rose-100">MANAGER LEADERBOARD</p>
+            <h3 class="mt-1 text-lg font-light">Ranked by service and revenue</h3>
+          </div>
+          <p class="text-[10px] text-stone-500">Score: feedback 50% · income 30% · bookings 10% · travels 10%</p>
+        </div>
+        <div *ngIf="managerRankings.length" class="overflow-x-auto">
+          <table class="w-full min-w-[700px] text-left text-sm">
+            <thead class="text-[9px] tracking-[0.12em] text-stone-500">
+              <tr><th class="px-5 py-3 font-normal">RANK / MANAGER</th><th class="px-4 py-3 font-normal">SCORE</th><th class="px-4 py-3 font-normal">TRAVELS</th><th class="px-4 py-3 font-normal">BOOKINGS</th><th class="px-4 py-3 font-normal">AVG. RATING</th><th class="px-5 py-3 text-right font-normal">PAID INCOME</th></tr>
+            </thead>
+            <tbody class="divide-y divide-white/10">
+              <tr *ngFor="let manager of managerRankings; let index = index">
+                <td class="px-5 py-4"><span class="mr-3 text-rose-100">#{{ index + 1 }}</span>{{ manager.name }}</td>
+                <td class="px-4 py-4 text-rose-100">{{ manager.score }}/100</td>
+                <td class="px-4 py-4 text-stone-300">{{ manager.travels }}</td>
+                <td class="px-4 py-4 text-stone-300">{{ manager.bookings }}</td>
+                <td class="px-4 py-4 text-stone-300">{{ manager.averageRating ? (manager.averageRating | number:'1.1-1') + ' / 5' : '—' }}</td>
+                <td class="px-5 py-4 text-right text-stone-200">{{ manager.income | currency:'MAD':'symbol':'1.0-0' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p *ngIf="!managerRankings.length" class="px-5 py-7 text-sm text-stone-500">No travel managers are available to rank.</p>
+      </section>
+    </section>
 
     <section *ngIf="activeTab === 'travels'">
       <div class="min-w-0">
@@ -128,6 +233,9 @@
             <input name="duration" type="number" min="1" [(ngModel)]="travelForm.duration" required
               class="admin-input" />
           </label>
+          <label class="text-xs text-stone-300">Price (MAD)
+            <input name="priceMad" type="number" min="1" step="0.01" [(ngModel)]="travelForm.priceMad" required class="admin-input" />
+          </label>
           <label class="text-xs text-stone-300">Image URL
             <input name="imageUrl" type="url" [(ngModel)]="travelForm.imageUrl" class="admin-input" />
           </label>
@@ -143,11 +251,9 @@
               style="background-color: #121212; color: #d1d5db; border: 1px solid #374151;">
               <option value="" disabled style="background-color: #121212; color: #6b7280;">Select a payment provider
               </option>
-              <option value="Stripe" style="background-color: #121212; color: #d1d5db;">Stripe</option>
               <option value="PayPal" style="background-color: #121212; color: #d1d5db;">PayPal</option>
             </select>
-            <span class="mt-1 block text-[10px] leading-4 text-stone-500">Saved as a travel preference only. No payment
-              processing is enabled.</span>
+            <span class="mt-1 block text-[10px] leading-4 text-stone-500">Traveler bookings use PayPal checkout.</span>
           </label>
           <label class="text-xs text-stone-300 sm:col-span-2">Description
             <textarea name="description" [(ngModel)]="travelForm.description" rows="3" class="admin-input"></textarea>
@@ -204,6 +310,87 @@
         </div>
       </section>
     </div>
+
+    <section *ngIf="activeTab === 'history'" class="space-y-5">
+      <div>
+        <p class="text-[10px] tracking-[0.2em] text-rose-100">BOOKING LEDGER</p>
+        <h2 class="mt-2 font-sans-clean text-2xl font-light">Detailed travel history</h2>
+        <p class="mt-2 text-sm text-stone-400">Every reservation, its traveler, journey, date, and current status.</p>
+      </div>
+      <div *ngIf="bookings.length" class="overflow-x-auto border border-white/10">
+        <table class="w-full min-w-[760px] text-left text-sm">
+          <thead class="bg-white/[0.04] text-[9px] tracking-[0.12em] text-stone-500">
+            <tr><th class="px-4 py-3 font-normal">BOOKING</th><th class="px-4 py-3 font-normal">TRAVELER</th><th class="px-4 py-3 font-normal">TRAVEL</th><th class="px-4 py-3 font-normal">MANAGER</th><th class="px-4 py-3 font-normal">BOOKED</th><th class="px-4 py-3 font-normal">STATUS</th><th class="px-4 py-3 text-right font-normal">VALUE</th></tr>
+          </thead>
+          <tbody class="divide-y divide-white/10">
+            <tr *ngFor="let booking of bookings">
+              <td class="px-4 py-4 text-stone-300">#{{ booking.id }}</td>
+              <td class="px-4 py-4 text-stone-300">{{ travelerName(booking.userId) }}</td>
+              <td class="px-4 py-4 text-stone-100">{{ booking.travelTitle || travelName(booking.travelId) }}</td>
+              <td class="px-4 py-4 text-stone-400">{{ managerName(booking.managerId) }}</td>
+              <td class="px-4 py-4 text-stone-400">{{ booking.createdAt | date:'medium' }}</td>
+              <td class="px-4 py-4"><span class="border border-white/15 px-2 py-1 text-[9px] tracking-[0.08em]">{{ bookingPaymentStatus(booking) }}</span></td>
+              <td class="px-4 py-4 text-right text-stone-200">{{ booking.priceMad | currency:'MAD':'symbol':'1.0-2' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p *ngIf="!bookings.length" class="border border-white/10 px-5 py-10 text-center text-sm text-stone-500">No booking records yet.</p>
+    </section>
+
+    <section *ngIf="activeTab === 'feedback'" class="space-y-5">
+      <div>
+        <p class="text-[10px] tracking-[0.2em] text-rose-100">TRAVELER VOICE</p>
+        <h2 class="mt-2 font-sans-clean text-2xl font-light">Feedback & satisfaction</h2>
+        <p class="mt-2 text-sm text-stone-400">Reviews submitted after a traveler books a journey.</p>
+      </div>
+      <div *ngIf="feedbackEntries.length" class="grid gap-3 lg:grid-cols-2">
+        <article *ngFor="let entry of feedbackEntries" class="border border-white/10 bg-white/[0.025] p-5">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h3 class="text-sm text-stone-100">{{ travelName(entry.travelId) }}</h3>
+              <p class="mt-1 text-[10px] text-stone-500">{{ travelerName(entry.travelerId) }} · {{ entry.createdAt | date:'mediumDate' }}</p>
+            </div>
+            <span class="shrink-0 text-sm tracking-wider text-amber-100">{{ entry.rating }} / 5</span>
+          </div>
+          <p class="mt-4 whitespace-pre-line text-sm leading-6 text-stone-300">{{ entry.comment }}</p>
+          <p class="mt-4 border-t border-white/10 pt-3 text-[10px] text-stone-500">Manager: {{ managerName(entry.managerId) }} · Booking #{{ entry.bookingId }}</p>
+        </article>
+      </div>
+      <p *ngIf="!feedbackEntries.length" class="border border-white/10 px-5 py-10 text-center text-sm text-stone-500">No traveler feedback submitted yet.</p>
+    </section>
+
+    <section *ngIf="activeTab === 'reports'" class="space-y-5">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p class="text-[10px] tracking-[0.2em] text-rose-100">TRAVELER SAFETY</p>
+          <h2 class="mt-2 font-sans-clean text-2xl font-light">Filed reports</h2>
+          <p class="mt-2 text-sm text-stone-400">Review concerns and mark them open or closed after follow-up.</p>
+        </div>
+        <span class="border border-amber-100/20 px-3 py-2 text-[10px] tracking-[0.1em] text-amber-100">{{ openReportCount }} OPEN</span>
+      </div>
+      <div *ngIf="reports.length" class="space-y-3">
+        <article *ngFor="let report of reports" class="border border-white/10 bg-white/[0.025] p-5">
+          <div class="flex flex-col justify-between gap-4 sm:flex-row">
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="border border-rose-100/20 px-2 py-1 text-[9px] tracking-[0.1em] text-rose-100">{{ report.targetType }}</span>
+                <span class="border border-white/15 px-2 py-1 text-[9px] tracking-[0.1em]" [class.text-amber-100]="report.status === 'OPEN'" [class.text-emerald-200]="report.status === 'CLOSED'">{{ report.status }}</span>
+                <span class="text-[10px] text-stone-500">{{ report.createdAt | date:'medium' }}</span>
+              </div>
+              <h3 class="mt-3 text-base text-stone-100">{{ report.reason }}</h3>
+              <p class="mt-1 text-xs text-stone-400">Filed by {{ travelerName(report.reporterId) }} · Target: {{ report.targetType === 'MANAGER' ? managerName(report.targetId) : travelName(report.targetId) }}</p>
+              <p class="mt-3 whitespace-pre-line text-sm leading-6 text-stone-300">{{ report.details }}</p>
+            </div>
+            <button type="button" (click)="updateReportStatus(report)" [disabled]="updatingReportIds.has(report.id)"
+              class="h-fit shrink-0 border border-white/20 px-4 py-2.5 text-[10px] font-semibold tracking-[0.1em] text-stone-200 hover:border-rose-100/50 hover:text-rose-100 disabled:opacity-40">
+              {{ updatingReportIds.has(report.id) ? 'SAVING…' : report.status === 'OPEN' ? 'MARK CLOSED' : 'REOPEN REPORT' }}
+            </button>
+          </div>
+        </article>
+      </div>
+      <p *ngIf="!reports.length" class="border border-white/10 px-5 py-10 text-center text-sm text-stone-500">No traveler reports have been filed.</p>
+    </section>
 
     <section *ngIf="activeTab === 'users'">
       <div class="mb-5">
@@ -270,7 +457,7 @@
         class="border border-white/10 px-4 py-8 text-center text-sm text-stone-400">No user accounts found.</div>
     </section>
 
-    <div *ngIf="activeTab === 'travels' ? hasMoreTravels : hasMoreUsers" #loadMoreSentinel
+    <div *ngIf="activeTab === 'travels' ? hasMoreTravels : activeTab === 'users' && hasMoreUsers" #loadMoreSentinel
       class="flex min-h-16 items-center justify-center py-4 text-center">
       <button type="button" (click)="loadNextPage()" [disabled]="loadingUsers || loadingTravels"
         class="min-h-10 border border-white/15 px-5 text-xs text-stone-300 transition hover:border-rose-100/50 hover:text-white disabled:opacity-50">

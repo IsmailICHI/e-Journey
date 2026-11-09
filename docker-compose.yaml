@@ -153,6 +153,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       BOOKING_EVENTS_TOPIC: booking.created.v1
+      TRAVEL_SERVICE_URL: http://travel-service:8082
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-travelplan-local}
@@ -188,6 +189,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       BOOKING_EVENTS_TOPIC: booking.created.v1
+      TRAVEL_SERVICE_URL: http://travel-service:8082
     depends_on:
       postgres:
         condition: service_healthy
@@ -218,6 +220,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      BOOKING_SERVICE_URL: http://booking-service:8085
       PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}

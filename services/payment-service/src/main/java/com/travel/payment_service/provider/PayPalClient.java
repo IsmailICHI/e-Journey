@@ -39,23 +39,31 @@ public class PayPalClient {
         Map<String, Object> purchaseUnit = Map.of(
                 "reference_id", bookingId.toString(),
                 "amount", amountDetails);
-        return restClient.post()
+        Map<String, Object> order = restClient.post()
                 .uri("/v2/checkout/orders")
                 .headers(headers -> headers.setBearerAuth(accessToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("intent", "CAPTURE", "purchase_units", List.of(purchaseUnit)))
                 .retrieve()
                 .body(JSON_MAP);
+        if (order == null || !(order.get("id") instanceof String)) {
+            throw new IllegalStateException("PayPal did not return an order ID");
+        }
+        return order;
     }
 
     public Map<String, Object> captureOrder(String orderId) {
-        return restClient.post()
+        Map<String, Object> capture = restClient.post()
                 .uri("/v2/checkout/orders/{orderId}/capture", orderId)
                 .headers(headers -> headers.setBearerAuth(accessToken()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of())
                 .retrieve()
                 .body(JSON_MAP);
+        if (capture == null) {
+            throw new IllegalStateException("PayPal returned an empty capture response");
+        }
+        return capture;
     }
 
     private String accessToken() {

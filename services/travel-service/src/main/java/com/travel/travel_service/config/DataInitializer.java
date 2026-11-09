@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Slf4j
@@ -39,6 +40,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 + "French culture, museums and local experiences.")
                                                 .imageUrl("https://upload.wikimedia.org/wikipedia/commons/1/15/Paris_from_the_Arc_de_Triomphe%2C_17_October_2019.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original")
                                                 .duration(3)
+                                                .priceMad(new BigDecimal("4200.00"))
                                                 .itinerary(List.of(
                                                                 ItineraryEntity.builder()
                                                                                 .dayNumber(1)
@@ -84,6 +86,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 + "modern technology, food and famous neighborhoods.")
                                                 .imageUrl("https://upload.wikimedia.org/wikipedia/commons/archive/6/6d/20251228182740%21Tokyo_Tower%2C_Minato_City.jpg")
                                                 .duration(4)
+                                                .priceMad(new BigDecimal("6800.00"))
                                                 .itinerary(List.of(
                                                                 ItineraryEntity.builder()
                                                                                 .dayNumber(1)
@@ -140,6 +143,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 + "and famous New York experiences.")
                                                 .imageUrl("https://thumb.wikimedia.org/wikipedia/commons/thumb/0/01/New_York_City_%28New_York%2C_USA%29%2C_Empire_State_Building_--_2012_--_6448.jpg/1920px-New_York_City_%28New_York%2C_USA%29%2C_Empire_State_Building_--_2012_--_6448.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail")
                                                 .duration(4)
+                                                .priceMad(new BigDecimal("7200.00"))
                                                 .itinerary(List.of(
                                                                 ItineraryEntity.builder()
                                                                                 .dayNumber(1)
@@ -196,6 +200,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 + "shopping districts and cultural attractions.")
                                                 .imageUrl("https://upload.wikimedia.org/wikipedia/commons/4/4a/Beach_of_Habtoor_Grand_Resort_Spa%2C_Dubai_UAE.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original")
                                                 .duration(3)
+                                                .priceMad(new BigDecimal("3500.00"))
                                                 .itinerary(List.of(
                                                                 ItineraryEntity.builder()
                                                                                 .dayNumber(1)
@@ -241,6 +246,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 + "historic architecture, gardens and Moroccan cuisine.")
                                                 .imageUrl("https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/Coucher_de_soleil_sur_la_place_Jamaa_El_Fna.jpg/1920px-Coucher_de_soleil_sur_la_place_Jamaa_El_Fna.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail")
                                                 .duration(3)
+                                                .priceMad(new BigDecimal("2800.00"))
                                                 .itinerary(List.of(
                                                                 ItineraryEntity.builder()
                                                                                 .dayNumber(1)

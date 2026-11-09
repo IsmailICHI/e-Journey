@@ -27,6 +27,14 @@ public class Payment {
     @Column(nullable = false)
     private Long userId;
 
+    @Column(nullable = false)
+    private Long travelId;
+
+    private Long managerId;
+
+    @Column(nullable = false, length = 120)
+    private String travelTitle;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
@@ -39,12 +47,33 @@ public class Payment {
     @Column(unique = true)
     private String providerOrderId;
 
+    @Column(length = 1000)
+    private String approvalUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PaymentStatus status = PaymentStatus.CREATED;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
+
+    private Instant completedAt;
+
+    protected Payment() {
+    }
+
+    public Payment(Long bookingId, Long userId, Long travelId, Long managerId,
+            String travelTitle, BigDecimal amount, String currency, String providerOrderId, String approvalUrl) {
+        this.bookingId = bookingId;
+        this.userId = userId;
+        this.travelId = travelId;
+        this.managerId = managerId;
+        this.travelTitle = travelTitle;
+        this.amount = amount;
+        this.currency = currency;
+        this.providerOrderId = providerOrderId;
+        this.approvalUrl = approvalUrl;
+    }
 
     @PrePersist
     void setCreatedAt() {
@@ -79,11 +108,23 @@ public class Payment {
         return providerOrderId;
     }
 
+    public String getApprovalUrl() { return approvalUrl; }
+    public Long getTravelId() { return travelId; }
+    public Long getManagerId() { return managerId; }
+    public String getTravelTitle() { return travelTitle; }
+
     public PaymentStatus getStatus() {
         return status;
     }
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getCompletedAt() { return completedAt; }
+
+    public void complete() {
+        status = PaymentStatus.COMPLETED;
+        completedAt = Instant.now();
     }
 }

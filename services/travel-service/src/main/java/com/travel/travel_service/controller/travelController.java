@@ -10,6 +10,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -36,8 +38,16 @@ public class travelController {
 
     @GetMapping
     public TravelPageResponse listAll(
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam(defaultValue = "0") @Min(value = 0, message = "Page index must be 0 or greater") int page) {
-        return travelService.getTravelPage(page);
+        boolean admin = "ADMIN".equals(jwt.getClaimAsString("role"));
+        return travelService.getTravelPage(page, admin ? null : jwt.getClaim("userId"));
+    }
+
+    @GetMapping("/analytics")
+    @PreAuthorize("hasRole('ADMIN')")
+    public java.util.List<TravelResponse> analytics() {
+        return travelService.getAllTravelAnalytics();
     }
 
     @GetMapping("/{id}")
@@ -49,8 +59,10 @@ public class travelController {
     }
 
     @PostMapping
-    public ResponseEntity<TravelResponse> create(@Valid @RequestBody TravelRequest request) {
-        TravelResponse created = travelService.createTravel(request);
+    public ResponseEntity<TravelResponse> create(
+            @Valid @RequestBody TravelRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        TravelResponse created = travelService.createTravel(request, jwt.getClaim("userId"));
         return ResponseEntity.created(URI.create("/api/v1/admin/travels/" + created.travelId()))
                 .body(created);
     }
@@ -58,16 +70,20 @@ public class travelController {
     @PutMapping("/{id}")
     public ResponseEntity<TravelResponse> update(
             @PathVariable @Positive(message = "Travel ID must be a positive number") Long id,
-            @Valid @RequestBody TravelRequest request) {
-        TravelResponse updated = travelService.updateTravel(id, request)
+            @Valid @RequestBody TravelRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        boolean admin = "ADMIN".equals(jwt.getClaimAsString("role"));
+        TravelResponse updated = travelService.updateTravel(id, request, jwt.getClaim("userId"), admin)
                 .orElseThrow(() -> new ResourceNotFoundException("Travel with ID " + id + " not found"));
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @PathVariable @Positive(message = "Travel ID must be a positive number") Long id) {
-        if (!travelService.deleteTravel(id)) {
+            @PathVariable @Positive(message = "Travel ID must be a positive number") Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        boolean admin = "ADMIN".equals(jwt.getClaimAsString("role"));
+        if (!travelService.deleteTravel(id, jwt.getClaim("userId"), admin)) {
             throw new ResourceNotFoundException("Travel with ID " + id + " not found");
         }
         return ResponseEntity.noContent().build();

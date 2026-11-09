@@ -74,7 +74,8 @@ export class TravelManagerDashboardComponent implements OnInit {
       endDate: travel.endDate ?? '',
       accommodation: travel.accommodation ?? '',
       transportation: travel.transportation ?? '',
-      paymentMethod: travel.paymentMethod ?? 'PayPal'
+      paymentMethod: travel.paymentMethod ?? 'PayPal',
+      priceMad: travel.priceMad ?? 0
     };
     this.errorMessage = '';
     this.isEditorOpen = true;
@@ -147,7 +148,8 @@ export class TravelManagerDashboardComponent implements OnInit {
       endDate: '',
       accommodation: '',
       transportation: '',
-      paymentMethod: 'PayPal'
+      paymentMethod: 'PayPal',
+      priceMad: 0
     };
   }
 }

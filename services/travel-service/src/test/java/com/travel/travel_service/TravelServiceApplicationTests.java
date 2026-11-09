@@ -6,6 +6,7 @@ import com.travel.travel_service.dto.TravelRequest;
 import com.travel.travel_service.repository.TravelRepository;
 import com.travel.travel_service.services.TravelService;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.http.MediaType;
 import org.junit.jupiter.api.BeforeEach;
@@ -107,30 +109,33 @@ class TravelServiceApplicationTests {
 				java.time.LocalDate.parse("2026-11-01"),
 				java.time.LocalDate.parse("2026-11-04"),
 				"Medina riad", "Train and taxi", "Stripe",
+				new BigDecimal("2500.00"),
 				List.of(new ItineraryRequest(1, "Arrival", "Explore the medina", List.of("Harbor walk"))));
-		var created = travelService.createTravel(request);
+
+		var created = travelService.createTravel(request, 42L);
 		assertThat(created.travelId()).isNotNull();
 		assertThat(created.itinerary()).hasSize(1);
 
 		TravelRequest update = new TravelRequest(
 				"Updated coastal escape", "Essaouira", "Morocco", "Updated details", null, 3,
 				List.of("Taghazout"), null, null, "Ocean hotel", "Bus", "PayPal",
+				new BigDecimal("3000.00"),
 				List.of(new ItineraryRequest(1, "Surf", "Surf lesson", List.of("Morning surf"))));
-		var updated = travelService.updateTravel(created.travelId(), update).orElseThrow();
+		var updated = travelService.updateTravel(created.travelId(), update, 42L, true).orElseThrow();
 		assertThat(updated.title()).isEqualTo("Updated coastal escape");
 		assertThat(updated.paymentMethod()).isEqualTo("PayPal");
 		assertThat(updated.destinations()).containsExactly("Taghazout");
 		assertThat(updated.itinerary()).hasSize(1);
 		assertThat(updated.itinerary().getFirst().activities()).containsExactly("Morning surf");
 
-		assertThat(travelService.deleteTravel(created.travelId())).isTrue();
+		assertThat(travelService.deleteTravel(created.travelId(), 42L, true)).isTrue();
 		assertThat(travelRepository.findById(created.travelId())).isEmpty();
 	}
 
 	@Test
-	@WithMockUser(roles = "ADMIN")
 	void invalidTravelCreationReturnsSpecifiedBadRequestWithValidationErrors() throws Exception {
 		mockMvc.perform(post("/api/v1/admin/travels")
+				.with(adminJwt())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(
 						"{\"title\":\"\",\"city\":\"\",\"country\":\"\",\"duration\":0,\"paymentMethod\":\"Bitcoin\"}"))
@@ -150,14 +155,14 @@ class TravelServiceApplicationTests {
 	}
 
 	@Test
-	@WithMockUser(roles = "ADMIN")
 	void invalidDateRangeReturnsSpecifiedBadRequest() throws Exception {
 		LocalDate startDate = LocalDate.now().plusDays(10);
 		LocalDate endDate = LocalDate.now().plusDays(1);
 		mockMvc.perform(post("/api/v1/admin/travels")
+				.with(adminJwt())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(
-						"{\"title\":\"Test trip\",\"city\":\"Rabat\",\"country\":\"Morocco\",\"duration\":3,\"paymentMethod\":\"Stripe\",\"startDate\":\""
+						"{\"title\":\"Test trip\",\"city\":\"Rabat\",\"country\":\"Morocco\",\"duration\":3,\"paymentMethod\":\"Stripe\",\"priceMad\":2500,\"startDate\":\""
 								+ startDate + "\",\"endDate\":\"" + endDate
 								+ "\",\"accommodation\":\"Hotel\",\"transportation\":\"Bus\"}"))
 				// .content("{\"title\":\"Test
@@ -172,12 +177,12 @@ class TravelServiceApplicationTests {
 	}
 
 	@Test
-	@WithMockUser(roles = "ADMIN")
 	void rejectsTravelDatesThatAreNotAfterToday() throws Exception {
 		LocalDate today = LocalDate.now();
 		LocalDate tomorrow = today.plusDays(1);
 
 		mockMvc.perform(post("/api/v1/admin/travels")
+				.with(adminJwt())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(validTravelJson(today, tomorrow)))
 				.andExpect(status().isBadRequest())
@@ -185,6 +190,7 @@ class TravelServiceApplicationTests {
 						.jsonPath("$.validationErrors.startDate").exists());
 
 		mockMvc.perform(post("/api/v1/admin/travels")
+				.with(adminJwt())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(validTravelJson(tomorrow, today)))
 				.andExpect(status().isBadRequest())
@@ -194,15 +200,20 @@ class TravelServiceApplicationTests {
 
 	private String validTravelJson(LocalDate startDate, LocalDate endDate) {
 		return "{\"title\":\"Future trip\",\"city\":\"Rabat\",\"country\":\"Morocco\","
-				+ "\"duration\":3,\"paymentMethod\":\"Stripe\",\"startDate\":\"" + startDate
+				+ "\"duration\":3,\"paymentMethod\":\"Stripe\",\"priceMad\":2500,\"startDate\":\"" + startDate
 				+ "\",\"endDate\":\"" + endDate
 				+ "\",\"accommodation\":\"Hotel\",\"transportation\":\"Bus\"}";
 	}
 
+	private RequestPostProcessor adminJwt() {
+		return org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt()
+				.jwt(jwt -> jwt.claim("role", "ADMIN").claim("userId", 42L))
+				.authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"));
+	}
+
 	@Test
-	@WithMockUser(roles = "ADMIN")
 	void getNonExistentTravelReturnsSpecifiedNotFound() throws Exception {
-		mockMvc.perform(get("/api/v1/admin/travels/999999"))
+		mockMvc.perform(get("/api/v1/admin/travels/999999").with(adminJwt()))
 				.andExpect(status().isNotFound())
 				.andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status")
 						.value(404))

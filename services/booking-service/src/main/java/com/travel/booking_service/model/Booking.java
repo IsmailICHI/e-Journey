@@ -1,6 +1,7 @@
 package com.travel.booking_service.model;
 
 import java.time.Instant;
+import java.math.BigDecimal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,9 +27,20 @@ public class Booking {
     @Column(nullable = false)
     private Long travelId;
 
+    @Column(length = 120)
+    private String travelTitle;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal priceMad;
+
+    private Long managerId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private BookingStatus status = BookingStatus.PENDING_PAYMENT;
+
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean feedbackSubmitted;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -58,11 +70,43 @@ public class Booking {
         this.travelId = travelId;
     }
 
+    public String getTravelTitle() {
+        return travelTitle;
+    }
+
+    public void setTravelTitle(String travelTitle) {
+        this.travelTitle = travelTitle;
+    }
+
+    public BigDecimal getPriceMad() {
+        return priceMad;
+    }
+
+    public void setPriceMad(BigDecimal priceMad) {
+        this.priceMad = priceMad;
+    }
+
+    public Long getManagerId() {
+        return managerId;
+    }
+
+    public void setManagerId(Long managerId) {
+        this.managerId = managerId;
+    }
+
     public BookingStatus getStatus() {
         return status;
     }
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public boolean isFeedbackSubmitted() {
+        return feedbackSubmitted;
+    }
+
+    public void setFeedbackSubmitted(boolean feedbackSubmitted) {
+        this.feedbackSubmitted = feedbackSubmitted;
     }
 }

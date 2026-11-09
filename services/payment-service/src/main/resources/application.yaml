@@ -24,6 +24,9 @@ paypal:
   client-id: ${PAYPAL_CLIENT_ID:}
   client-secret: ${PAYPAL_CLIENT_SECRET:}
 
+booking-service:
+  base-url: ${BOOKING_SERVICE_URL:http://localhost:8085}
+
 management:
   endpoints:
     web:

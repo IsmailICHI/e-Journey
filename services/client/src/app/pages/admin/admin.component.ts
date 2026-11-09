@@ -6,12 +6,15 @@ import { NavbarComponent } from '../../shared/navbar/navbar.component';
 import { getApiErrorMessage } from '../../core/interceptors/api-error';
 import { ItineraryRequest, TravelRequest, TravelResponse } from '../../core/models/travel.model';
 import { UserResponse } from '../../core/models/user.model';
+import { BookingResponse, FeedbackResponse, PaymentAnalyticsResponse, ReportResponse } from '../../core/models/booking.model';
 import { AuthService } from '../../core/services/auth.service';
+import { BookingService } from '../../core/services/booking.service';
 import { FeedbackService } from '../../core/services/feedback.service';
+import { PaymentOrderResponse, PaymentService } from '../../core/services/payment.service';
 import { TravelService } from '../../core/services/travel.service';
 import { UserService } from '../../core/services/user.service';
 
-type AdminTab = 'travels' | 'users';
+type AdminTab = 'overview' | 'travels' | 'history' | 'feedback' | 'reports' | 'users';
 
 interface TravelFormValue {
   title: string;
@@ -26,6 +29,7 @@ interface TravelFormValue {
   accommodation: string;
   transportation: string;
   paymentMethod: string;
+  priceMad: number | null;
   activities: string;
 }
 
@@ -46,6 +50,7 @@ const emptyTravelForm = (): TravelFormValue => ({
   accommodation: '',
   transportation: '',
   paymentMethod: '',
+  priceMad: null,
   activities: ''
 });
 
@@ -58,6 +63,8 @@ const emptyTravelForm = (): TravelFormValue => ({
 export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly userService = inject(UserService);
   private readonly travelService = inject(TravelService);
+  private readonly bookingService = inject(BookingService);
+  private readonly paymentService = inject(PaymentService);
   private readonly authService = inject(AuthService);
   readonly feedback = inject(FeedbackService);
   private readonly ngZone = inject(NgZone);
@@ -74,14 +81,26 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly adminEmail = this.authService.email;
   readonly tabs: { id: AdminTab; label: string }[] = [
+    { id: 'overview', label: 'Overview' },
     { id: 'travels', label: 'Travels' },
+    { id: 'history', label: 'Travel history' },
+    { id: 'feedback', label: 'Feedback' },
+    { id: 'reports', label: 'Reports' },
     { id: 'users', label: 'Users' }
   ];
   readonly roleOptions = ['ADMIN', 'TRAVEL_MANAGER', 'TRAVELER'] as const;
 
-  activeTab: AdminTab = 'travels';
+  activeTab: AdminTab = 'overview';
   users: UserResponse[] = [];
   travels: TravelResponse[] = [];
+  allTravelRecords: TravelResponse[] = [];
+  bookings: BookingResponse[] = [];
+  feedbackEntries: FeedbackResponse[] = [];
+  reports: ReportResponse[] = [];
+  paymentRecords: PaymentOrderResponse[] = [];
+  paymentAnalytics: PaymentAnalyticsResponse | null = null;
+  loadingOversight = false;
+  updatingReportIds = new Set<number>();
   selectedTravel: TravelResponse | null = null;
   isTravelEditorOpen = false;
   travelForm = emptyTravelForm();
@@ -102,6 +121,7 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.loadUsers();
     this.loadTravels();
+    this.loadOversight();
   }
 
   ngAfterViewInit(): void {
@@ -138,6 +158,9 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
         this.hasMoreUsers = !response.last;
         this.loadingUsers = false;
         this.refreshSentinel();
+        if (this.activeTab === 'overview' && this.hasMoreUsers) {
+          this.loadUsers();
+        }
       },
       error: (error: unknown) => {
         this.errorMessage = getApiErrorMessage(error);
@@ -173,9 +196,145 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
   loadNextPage(): void {
     if (this.activeTab === 'users') {
       this.loadUsers();
-    } else {
+    } else if (this.activeTab === 'travels') {
       this.loadTravels();
     }
+  }
+
+  loadOversight(): void {
+    this.loadingOversight = true;
+    let remaining = 5;
+    const finished = (): void => {
+      remaining -= 1;
+      this.loadingOversight = remaining > 0;
+    };
+    this.bookingService.getAllBookings().subscribe({
+      next: (bookings) => { this.bookings = bookings; finished(); },
+      error: (error: unknown) => { this.errorMessage = getApiErrorMessage(error); finished(); }
+    });
+    this.bookingService.getFeedback().subscribe({
+      next: (entries) => { this.feedbackEntries = entries; finished(); },
+      error: (error: unknown) => { this.errorMessage = getApiErrorMessage(error); finished(); }
+    });
+    this.bookingService.getReports().subscribe({
+      next: (reports) => { this.reports = reports; finished(); },
+      error: (error: unknown) => { this.errorMessage = getApiErrorMessage(error); finished(); }
+    });
+    this.paymentService.getAdminAnalytics(3).subscribe({
+      next: (analytics) => { this.paymentAnalytics = analytics; finished(); },
+      error: (error: unknown) => { this.errorMessage = getApiErrorMessage(error); finished(); }
+    });
+    this.paymentService.getAdminPaymentHistory().subscribe({
+      next: (payments) => { this.paymentRecords = payments; finished(); },
+      error: (error: unknown) => { this.errorMessage = getApiErrorMessage(error); finished(); }
+    });
+    this.travelService.getTravelAnalytics().subscribe({
+      next: (travels) => { this.allTravelRecords = travels; },
+      error: (error: unknown) => { this.errorMessage = getApiErrorMessage(error); }
+    });
+  }
+
+  get managerRankings(): Array<{
+    id: number;
+    name: string;
+    travels: number;
+    bookings: number;
+    income: number;
+    averageRating: number;
+    score: number;
+  }> {
+    const managers = this.users.filter((user) => user.role === 'TRAVEL_MANAGER');
+    const rows = managers.map((manager) => {
+      const managedTravels = this.allTravelRecords.filter((travel) => travel.createdByUserId === manager.id);
+      const managedBookings = this.bookings.filter((booking) => booking.managerId === manager.id);
+      const ratings = this.feedbackEntries.filter((entry) => entry.managerId === manager.id);
+      const income = this.paymentAnalytics?.managerIncome.find((entry) => entry.managerId === manager.id)?.income ?? 0;
+      const averageRating = ratings.length
+        ? ratings.reduce((sum, entry) => sum + entry.rating, 0) / ratings.length
+        : 0;
+      return {
+        id: manager.id,
+        name: manager.fullName,
+        travels: managedTravels.length,
+        bookings: managedBookings.length,
+        income,
+        averageRating,
+        score: 0
+      };
+    });
+    const maxIncome = Math.max(0, ...rows.map((row) => row.income));
+    const maxBookings = Math.max(0, ...rows.map((row) => row.bookings));
+    const maxTravels = Math.max(0, ...rows.map((row) => row.travels));
+    return rows.map((row) => ({
+      ...row,
+      score: Math.round(
+        (row.averageRating / 5 * 50)
+        + (maxIncome ? row.income / maxIncome * 30 : 0)
+        + (maxBookings ? row.bookings / maxBookings * 10 : 0)
+        + (maxTravels ? row.travels / maxTravels * 10 : 0)
+      )
+    })).sort((left, right) => right.score - left.score || right.income - left.income);
+  }
+
+  get topTravels(): Array<{ title: string; income: number; bookings: number }> {
+    const bookingsByTravel = new Map<number, number>();
+    this.bookings.forEach((booking) => bookingsByTravel.set(
+      booking.travelId,
+      (bookingsByTravel.get(booking.travelId) ?? 0) + 1
+    ));
+    return (this.paymentAnalytics?.topTravels ?? []).map((travel) => ({
+      title: travel.title,
+      income: travel.income,
+      bookings: bookingsByTravel.get(travel.travelId) ?? travel.payments
+    })).slice(0, 5);
+  }
+
+  get openReportCount(): number {
+    return this.reports.filter((report) => report.status === 'OPEN').length;
+  }
+
+  managerName(managerId: number | null): string {
+    if (managerId === null) {
+      return 'Administrator / legacy listing';
+    }
+    return this.users.find((user) => user.id === managerId)?.fullName ?? `Manager #${managerId}`;
+  }
+
+  travelerName(travelerId: number): string {
+    return this.users.find((user) => user.id === travelerId)?.fullName ?? `Traveler #${travelerId}`;
+  }
+
+  travelName(travelId: number): string {
+    const travel = this.allTravelRecords.find((entry) => entry.travelId === travelId);
+    return travel ? `${travel.title} · ${travel.city}, ${travel.country}` : `Travel #${travelId}`;
+  }
+
+  bookingPaymentStatus(booking: BookingResponse): string {
+    const payment = this.paymentRecords.find((entry) => entry.bookingId === booking.id);
+    if (payment?.status === 'COMPLETED') {
+      return 'PAID';
+    }
+    return payment ? `PAYMENT ${payment.status}` : booking.status.replaceAll('_', ' ');
+  }
+
+  incomeBarWidth(income: number): string {
+    const max = Math.max(1, ...(this.paymentAnalytics?.monthlyIncome.map((month) => month.income) ?? []));
+    return `${Math.max(3, income / max * 100)}%`;
+  }
+
+  updateReportStatus(report: ReportResponse): void {
+    const status = report.status === 'OPEN' ? 'CLOSED' : 'OPEN';
+    this.updatingReportIds.add(report.id);
+    this.bookingService.updateReportStatus(report.id, status).subscribe({
+      next: (updated) => {
+        this.reports = this.reports.map((entry) => entry.id === updated.id ? updated : entry);
+        this.updatingReportIds.delete(report.id);
+      },
+      error: (error: unknown) => {
+        this.errorMessage = getApiErrorMessage(error);
+        this.updatingReportIds.delete(report.id);
+      }
+    });
   }
 
   setTab(tab: AdminTab): void {
@@ -216,6 +375,7 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
       accommodation: travel.accommodation ?? '',
       transportation: travel.transportation ?? '',
       paymentMethod: travel.paymentMethod ?? '',
+      priceMad: travel.priceMad,
       activities: travel.itinerary.flatMap((day) => day.activities).join('\n')
     };
     this.clearMessages();
@@ -229,7 +389,10 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   saveTravel(): void {
-    if (this.savingTravel || this.travelForm.duration === null) {
+    if (this.savingTravel
+      || this.travelForm.duration === null
+      || this.travelForm.priceMad === null
+      || this.travelForm.priceMad <= 0) {
       return;
     }
 
@@ -381,6 +544,7 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
       accommodation: this.travelForm.accommodation.trim(),
       transportation: this.travelForm.transportation.trim(),
       paymentMethod: this.travelForm.paymentMethod,
+      priceMad: Number(this.travelForm.priceMad),
       itinerary
     };
   }

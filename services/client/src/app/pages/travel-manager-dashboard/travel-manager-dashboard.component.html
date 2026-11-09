@@ -70,6 +70,7 @@
             </div>
             <p class="mt-1 text-sm text-stone-600">{{ travel.city }}, {{ travel.country }}</p>
             <p class="mt-2 line-clamp-2 text-xs leading-5 text-stone-500">{{ travel.description || 'No description added.' }}</p>
+            <p class="mt-2 text-sm font-medium text-stone-800">{{ travel.priceMad | currency:'MAD':'symbol':'1.0-2' }}</p>
             <p class="mt-2 text-[10px] tracking-[0.08em] text-stone-500">
               {{ travel.startDate ? (travel.startDate | date:'MMM d, y') : 'Dates to be announced' }}
               <span *ngIf="travel.endDate"> — {{ travel.endDate | date:'MMM d, y' }}</span>
@@ -112,6 +113,9 @@
         </label>
         <label class="text-xs font-medium text-stone-600">Duration (days)
           <input name="duration" type="number" [(ngModel)]="form.duration" required min="1" max="30" class="mt-1.5 w-full border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none focus:border-[#9b793d]">
+        </label>
+        <label class="text-xs font-medium text-stone-600">Price (MAD)
+          <input name="priceMad" type="number" [(ngModel)]="form.priceMad" required min="1" step="0.01" class="mt-1.5 w-full border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none focus:border-[#9b793d]">
         </label>
         <label class="text-xs font-medium text-stone-600">City
           <input name="city" [(ngModel)]="form.city" required minlength="2" maxlength="20" class="mt-1.5 w-full border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none focus:border-[#9b793d]">

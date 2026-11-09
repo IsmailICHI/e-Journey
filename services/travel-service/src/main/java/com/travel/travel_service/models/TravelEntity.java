@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,6 +55,11 @@ public class TravelEntity {
 
     @Column(length = 20)
     private String paymentMethod;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal priceMad;
+
+    private Long createdByUserId;
 
     @OneToMany(mappedBy = "travel", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("dayNumber ASC")
