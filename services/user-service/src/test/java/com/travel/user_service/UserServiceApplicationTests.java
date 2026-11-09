@@ -88,6 +88,12 @@ class UserServiceApplicationTests {
 		mockMvc.perform(delete("/api/v1/admin/users/1")
 				.header("Authorization", "Bearer " + tokenFor(Role.TRAVELER)))
 				.andExpect(status().isForbidden());
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+				.patch("/api/v1/admin/users/1/role")
+				.header("Authorization", "Bearer " + tokenFor(Role.TRAVEL_MANAGER))
+				.contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+				.content("{\"role\":\"TRAVELER\"}"))
+				.andExpect(status().isForbidden());
 		String adminToken = tokenFor(Role.ADMIN);
 		mockMvc.perform(delete("/api/v1/admin/users/999999")
 				.header("Authorization", "Bearer " + adminToken))

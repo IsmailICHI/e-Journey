@@ -77,7 +77,7 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
     { id: 'travels', label: 'Travels' },
     { id: 'users', label: 'Users' }
   ];
-  readonly roleOptions = ['ADMIN', 'TRAVEL_MANAGER', 'TRAVELER', 'USER'] as const;
+  readonly roleOptions = ['ADMIN', 'TRAVEL_MANAGER', 'TRAVELER'] as const;
 
   activeTab: AdminTab = 'travels';
   users: UserResponse[] = [];

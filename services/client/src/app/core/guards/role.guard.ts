@@ -4,7 +4,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
-export function roleGuard(allowedRoles: Array<'ADMIN' | 'TRAVEL_MANAGER' | 'TRAVELER' | 'USER'>): CanActivateFn {
+export function roleGuard(allowedRoles: Array<'ADMIN' | 'TRAVEL_MANAGER' | 'TRAVELER'>): CanActivateFn {
   return (route, state) => {
     const router = inject(Router);
     const authService = inject(AuthService);
@@ -16,7 +16,7 @@ export function roleGuard(allowedRoles: Array<'ADMIN' | 'TRAVEL_MANAGER' | 'TRAV
     return authService.verifySession().pipe(
       map((profile) => {
         const role = (profile.role ?? '').toUpperCase().replace(/^ROLE_/, '');
-        if (allowedRoles.includes(role as 'ADMIN' | 'TRAVEL_MANAGER' | 'TRAVELER' | 'USER')) {
+        if (allowedRoles.includes(role as 'ADMIN' | 'TRAVEL_MANAGER' | 'TRAVELER')) {
           return true;
         }
         return router.createUrlTree(['/error', 403]);

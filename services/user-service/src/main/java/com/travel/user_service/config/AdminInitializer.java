@@ -17,6 +17,7 @@ public class AdminInitializer {
     @Bean
     public CommandLineRunner initializeAdmin(UserService userService) {
         return args -> {
+            userRepo.migrateLegacyUserRolesToTravelers();
             boolean adminExists = userRepo.existsByEmail("admin@admin.com");
             if (!adminExists) {
                 userService.createAdmin();

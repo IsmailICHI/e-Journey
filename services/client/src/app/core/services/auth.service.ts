@@ -7,7 +7,7 @@ import { UserProfileResponse } from '../models/user.model';
 
 const TOKEN_KEY = 'e-journey.token';
 
-type NormalizedRole = 'ADMIN' | 'TRAVEL_MANAGER' | 'TRAVELER' | 'USER';
+type NormalizedRole = 'ADMIN' | 'TRAVEL_MANAGER' | 'TRAVELER';
 
 interface TokenClaims {
   sub: string;
@@ -103,7 +103,7 @@ export class AuthService {
   }
 
   get isTraveler(): boolean {
-    return this.claims?.role === 'TRAVELER' || this.claims?.role === 'USER';
+    return this.claims?.role === 'TRAVELER';
   }
 
   logout(): void {
@@ -164,16 +164,14 @@ function normalizeRole(value: string): NormalizedRole | '' {
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '');
 
-  const canonical = normalized
-    .replace('TRAVELMANAGER', 'TRAVEL_MANAGER')
-    .replace('TRAVELERUSER', 'TRAVELER');
+  const canonical = normalized.replace('TRAVELMANAGER', 'TRAVEL_MANAGER');
 
-  if (canonical === 'ADMIN' || canonical === 'TRAVEL_MANAGER' || canonical === 'TRAVELER' || canonical === 'USER') {
+  if (canonical === 'ADMIN' || canonical === 'TRAVEL_MANAGER' || canonical === 'TRAVELER') {
     return canonical as NormalizedRole;
   }
   return '';
 }
 
 function isSupportedRole(value: string): value is NormalizedRole {
-  return value === 'ADMIN' || value === 'TRAVEL_MANAGER' || value === 'TRAVELER' || value === 'USER';
+  return value === 'ADMIN' || value === 'TRAVEL_MANAGER' || value === 'TRAVELER';
 }

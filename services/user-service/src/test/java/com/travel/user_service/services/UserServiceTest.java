@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.travel.user_service.exceptions.ResourceNotFoundException;
+import com.travel.user_service.exceptions.BadRequestException;
 import com.travel.user_service.models.User;
 import com.travel.user_service.repository.UserRepository;
 
@@ -44,5 +45,12 @@ class UserServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(tokenRevocationService, never()).revokeUserTokens(42L);
+    }
+
+    @Test
+    void rejectsUnsupportedUserRole() {
+        assertThatThrownBy(() -> userService.updateUserRole(42L, "USER"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Unsupported role: USER");
     }
 }

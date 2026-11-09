@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/places/public").permitAll()
                         .pathMatchers("/actuator/prometheus", "/actuator/health").permitAll()
+                        .pathMatchers("/api/v1/admin/users", "/api/v1/admin/users/**").hasRole("ADMIN")
                         .pathMatchers("/api/v1/admin", "/api/v1/admin/**").hasAnyRole("ADMIN", "TRAVEL_MANAGER")
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer

@@ -5,8 +5,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Modifying;
 import com.travel.user_service.models.*;
 import java.util.Optional;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -17,6 +19,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByFullName(String fullName);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE users SET role = 'TRAVELER' WHERE role = 'USER'", nativeQuery = true)
+    int migrateLegacyUserRolesToTravelers();
 
     @Query("SELECT u FROM User u WHERE LOWER(u.email) <> LOWER(:email)")
     Page<User> findAllExcludingEmail(@Param("email") String email, Pageable pageable);
