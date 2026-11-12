@@ -1,9 +1,8 @@
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
-COPY services/booking-service/.mvn .mvn
-COPY services/booking-service/mvnw services/booking-service/pom.xml ./
+COPY services/booking-service/pom.xml ./
 COPY services/booking-service/src ./src
-RUN chmod +x mvnw && ./mvnw -B -DskipTests package
+RUN mvn -B -DskipTests package
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

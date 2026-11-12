@@ -11,4 +11,12 @@ public interface TravelerFeedbackRepository extends JpaRepository<TravelerFeedba
     boolean existsByBookingId(Long bookingId);
 
     List<TravelerFeedback> findAllByOrderByCreatedAtDesc();
+
+    List<TravelerFeedback> findByManagerIdOrderByCreatedAtDesc(Long managerId);
+
+    long countByManagerId(Long managerId);
+
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT AVG(f.rating) FROM TravelerFeedback f WHERE f.managerId = :managerId")
+    Double averageRatingByManagerId(@org.springframework.data.repository.query.Param("managerId") Long managerId);
 }

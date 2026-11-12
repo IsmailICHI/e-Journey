@@ -1,6 +1,7 @@
 package com.travel.booking_service.client;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -33,13 +34,41 @@ public class TravelDetailsClient {
         }
         Number price = response.get("priceMad") instanceof Number value ? value : null;
         Number creator = response.get("createdByUserId") instanceof Number value ? value : null;
+        Object methodValue = response.get("paymentMethod");
+        String paymentMethod = methodValue instanceof String method ? method : null;
+        Object startDateValue = response.get("startDate");
+        LocalDate departureDate = startDateValue instanceof String date && !date.isBlank()
+                ? LocalDate.parse(date)
+                : null;
+        String city = response.get("city") instanceof String value ? value : null;
+        String country = response.get("country") instanceof String value ? value : null;
+        Integer duration = response.get("duration") instanceof Number value ? value.intValue() : null;
+        java.util.List<String> destinations = response.get("destinations") instanceof java.util.List<?> values
+                ? values.stream().filter(String.class::isInstance).map(String.class::cast).toList()
+                : java.util.List.of();
         return new TravelSnapshot(
                 id.longValue(),
                 String.valueOf(response.get("title")),
                 price == null ? null : new BigDecimal(price.toString()),
-                creator == null ? null : creator.longValue());
+                creator == null ? null : creator.longValue(),
+                paymentMethod,
+                departureDate,
+                city,
+                country,
+                duration,
+                destinations);
     }
 
-    public record TravelSnapshot(Long id, String title, BigDecimal priceMad, Long managerId) {
+    public record TravelSnapshot(
+            Long id,
+            String title,
+            BigDecimal priceMad,
+            Long managerId,
+            String paymentMethod,
+            LocalDate departureDate,
+            String city,
+            String country,
+            Integer duration,
+            java.util.List<String> destinations) {
     }
 }

@@ -29,6 +29,7 @@ jwt:
 app:
   booking:
     events-topic: ${BOOKING_EVENTS_TOPIC:booking.created.v1}
+    payment-confirmation-secret: ${BOOKING_PAYMENT_CONFIRMATION_SECRET:}
   outbox:
     publish-delay-ms: ${BOOKING_OUTBOX_PUBLISH_DELAY_MS:1000}
 

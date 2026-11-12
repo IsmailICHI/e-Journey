@@ -18,7 +18,8 @@ public class TravelerReport {
 
     public enum TargetType {
         TRAVEL,
-        MANAGER
+        MANAGER,
+        TRAVELER
     }
 
     public enum Status {

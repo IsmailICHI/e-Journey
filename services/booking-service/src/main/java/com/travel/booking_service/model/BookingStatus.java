@@ -1,5 +1,7 @@
 package com.travel.booking_service.model;
 
 public enum BookingStatus {
-    PENDING_PAYMENT
+    PENDING_PAYMENT,
+    CONFIRMED,
+    CANCELLED
 }
