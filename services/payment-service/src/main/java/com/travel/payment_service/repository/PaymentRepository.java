@@ -19,4 +19,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     List<Payment> findByStatusAndCompletedAtGreaterThanEqualOrderByCompletedAtAsc(
             com.travel.payment_service.model.PaymentStatus status, Instant from);
+
+    List<Payment> findByManagerIdAndStatusAndCompletedAtGreaterThanEqualOrderByCompletedAtAsc(
+            Long managerId, com.travel.payment_service.model.PaymentStatus status, Instant from);
+
+    Optional<Payment> findByProviderOrderIdAndProvider(String providerOrderId, String provider);
 }

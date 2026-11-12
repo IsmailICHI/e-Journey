@@ -9,6 +9,7 @@ public record PaymentOrderResponse(
         Long managerId,
         java.math.BigDecimal amount,
         String currency,
+        String provider,
         String status,
         String approvalUrl) {
 
@@ -20,6 +21,7 @@ public record PaymentOrderResponse(
                 payment.getManagerId(),
                 payment.getAmount(),
                 payment.getCurrency(),
+                payment.getProvider(),
                 payment.getStatus().name(),
                 payment.getApprovalUrl());
     }

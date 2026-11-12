@@ -63,7 +63,8 @@ public class Payment {
     }
 
     public Payment(Long bookingId, Long userId, Long travelId, Long managerId,
-            String travelTitle, BigDecimal amount, String currency, String providerOrderId, String approvalUrl) {
+            String travelTitle, BigDecimal amount, String currency, String provider,
+            String providerOrderId, String approvalUrl) {
         this.bookingId = bookingId;
         this.userId = userId;
         this.travelId = travelId;
@@ -71,6 +72,7 @@ public class Payment {
         this.travelTitle = travelTitle;
         this.amount = amount;
         this.currency = currency;
+        this.provider = provider;
         this.providerOrderId = providerOrderId;
         this.approvalUrl = approvalUrl;
     }

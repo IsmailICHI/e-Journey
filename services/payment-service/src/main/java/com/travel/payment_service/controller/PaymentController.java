@@ -42,7 +42,19 @@ public class PaymentController {
     public PaymentOrderResponse capture(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long id) {
-        return paymentService.capture(userId(jwt), id);
+        return paymentService.capture(userId(jwt), id, "Bearer " + jwt.getTokenValue());
+    }
+
+    @PostMapping("/payments/stripe/complete")
+    public PaymentOrderResponse completeStripeSession(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody StripeSessionRequest request) {
+        if (request.sessionId() == null || request.sessionId().isBlank()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Stripe checkout session ID is required");
+        }
+        return paymentService.completeStripeSession(
+                userId(jwt), request.sessionId(), "Bearer " + jwt.getTokenValue());
     }
 
     @GetMapping("/admin/payments/history")
@@ -55,6 +67,17 @@ public class PaymentController {
     @PreAuthorize("hasRole('ADMIN')")
     public PaymentAnalyticsResponse analytics(@RequestParam(defaultValue = "3") int months) {
         return paymentService.getAnalytics(months);
+    }
+
+    @GetMapping("/manager/payments/analytics")
+    @PreAuthorize("hasRole('TRAVEL_MANAGER')")
+    public PaymentAnalyticsResponse managerAnalytics(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "3") int months) {
+        return paymentService.getManagerAnalytics(userId(jwt), months);
+    }
+
+    public record StripeSessionRequest(String sessionId) {
     }
 
     private Long userId(Jwt jwt) {

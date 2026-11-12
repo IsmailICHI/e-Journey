@@ -1,9 +1,8 @@
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
-COPY services/payment-service/.mvn .mvn
-COPY services/payment-service/mvnw services/payment-service/pom.xml ./
+COPY services/payment-service/pom.xml ./
 COPY services/payment-service/src ./src
-RUN chmod +x mvnw && ./mvnw -B -DskipTests package
+RUN mvn -B -DskipTests package
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
