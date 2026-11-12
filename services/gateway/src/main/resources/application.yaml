@@ -24,12 +24,12 @@ spring:
         - id: travel-service
           uri: ${TRAVEL_SERVICE_URL:http://localhost:8082}
           predicates:
-            - Path=/api/v1/travels/**, /api/v1/places/public, /api/v1/places/travels/**, /api/v1/admin/travels, /api/v1/admin/travels/**
+            - Path=/api/v1/travels/**, /api/v1/places/public, /api/v1/places/travels/**, /api/v1/places/search, /api/v1/places/recommendations, /api/v1/places/managers/**, /api/v1/admin/travels, /api/v1/admin/travels/**
 
         - id: payment-service
           uri: ${PAYMENT_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/v1/payments/**, /api/v1/admin/payments, /api/v1/admin/payments/**
+            - Path=/api/v1/payments/**, /api/v1/admin/payments, /api/v1/admin/payments/**, /api/v1/manager/payments/**
 
         - id: booking-service
           uri: ${BOOKING_SERVICE_URL:http://localhost:8085}

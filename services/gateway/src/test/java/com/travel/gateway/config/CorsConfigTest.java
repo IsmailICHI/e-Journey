@@ -27,6 +27,7 @@ class CorsConfigTest {
 
         assertThat(configuration).isNotNull();
         assertThat(configuration.checkOrigin(origin)).isEqualTo(origin);
-        assertThat(configuration.checkHttpMethod(HttpMethod.PATCH)).isEqualTo(HttpMethod.PATCH);
+        assertThat(configuration.checkHttpMethod(HttpMethod.PATCH)).isNotNull();
+        assertThat(configuration.getAllowedMethods()).contains(HttpMethod.PATCH.name());
     }
 }
