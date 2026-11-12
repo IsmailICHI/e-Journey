@@ -45,7 +45,7 @@
         >PROFILE</a>
 
         <a
-          *ngIf="isTraveler"
+          *ngIf="isTraveler || isTravelManager || isAdmin"
           routerLink="/traveler-dashboard"
           (click)="closeMenu()"
           class="px-3 py-1 font-sans text-[11px] font-bold tracking-[0.14em] uppercase rounded-none transition-none"
@@ -165,7 +165,7 @@
       >PROFILE</a>
 
       <a
-        *ngIf="isTraveler"
+        *ngIf="isTraveler || isTravelManager || isAdmin"
         routerLink="/traveler-dashboard"
         (click)="closeMenu()"
         class="px-3 py-2 font-sans text-[11px] font-bold tracking-[0.16em] uppercase rounded-none"

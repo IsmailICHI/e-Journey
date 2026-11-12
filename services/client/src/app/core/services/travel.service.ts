@@ -22,6 +22,23 @@ export class TravelService {
     return this.http.get<TravelResponse[]>(`${environment.apiUrl}/api/v1/places/public`);
   }
 
+  searchPublicTravels(query: string, limit = 10): Observable<TravelResponse[]> {
+    return this.http.get<TravelResponse[]>(`${environment.apiUrl}/api/v1/places/search`, {
+      params: { q: query, limit }
+    });
+  }
+
+  getRecommendations(limit = 6): Observable<TravelResponse[]> {
+    return this.http.get<TravelResponse[]>(`${environment.apiUrl}/api/v1/places/recommendations`, {
+      params: { limit }
+    });
+  }
+
+  getPublicManagerTravels(managerId: number): Observable<TravelResponse[]> {
+    return this.http.get<TravelResponse[]>(
+      `${environment.apiUrl}/api/v1/places/managers/${managerId}/travels`);
+  }
+
   createTravel(travel: TravelRequest): Observable<TravelResponse> {
     return this.http.post<TravelResponse>(this.travelsUrl, travel);
   }

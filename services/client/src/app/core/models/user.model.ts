@@ -12,3 +12,8 @@ export interface UserProfileResponse {
   role: string;
   state: boolean | null;
 }
+
+export interface PublicManagerResponse {
+  id: number;
+  fullName: string;
+}

@@ -3,6 +3,8 @@ export interface BookingResponse {
   travelId: number;
   userId: number;
   travelTitle: string | null;
+  paymentMethod: string | null;
+  departureDate: string | null;
   priceMad: number | null;
   managerId: number | null;
   status: string;
@@ -24,13 +26,27 @@ export interface FeedbackResponse {
 export interface ReportResponse {
   id: number;
   reporterId: number;
-  targetType: 'TRAVEL' | 'MANAGER';
+  targetType: 'TRAVEL' | 'MANAGER' | 'TRAVELER';
   targetId: number;
   reason: string;
   details: string;
   status: 'OPEN' | 'CLOSED';
   createdAt: string;
   closedAt: string | null;
+}
+
+export interface TravelerStatisticsResponse {
+  pastTrips: number;
+  reportsFiled: number;
+  cancellations: number;
+  preferredPaymentMethod: string | null;
+}
+
+export interface ManagerPublicStatisticsResponse {
+  bookings: number;
+  feedbackCount: number;
+  averageRating: number | null;
+  reportCount: number;
 }
 
 export interface PaymentAnalyticsResponse {

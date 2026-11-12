@@ -11,6 +11,7 @@ export interface PaymentOrderResponse {
   managerId: number | null;
   amount: number;
   currency: string;
+  provider: 'PAYPAL' | 'STRIPE';
   status: string;
   approvalUrl: string;
 }
@@ -26,6 +27,16 @@ export class PaymentService {
 
   capture(paymentId: number): Observable<PaymentOrderResponse> {
     return this.http.post<PaymentOrderResponse>(`${this.paymentsUrl}/${paymentId}/capture`, {});
+  }
+
+  completeStripeSession(sessionId: string): Observable<PaymentOrderResponse> {
+    return this.http.post<PaymentOrderResponse>(`${this.paymentsUrl}/stripe/complete`, { sessionId });
+  }
+
+  getManagerAnalytics(months = 3): Observable<PaymentAnalyticsResponse> {
+    return this.http.get<PaymentAnalyticsResponse>(`${environment.apiUrl}/api/v1/manager/payments/analytics`, {
+      params: { months }
+    });
   }
 
   getAdminAnalytics(months = 3): Observable<PaymentAnalyticsResponse> {
