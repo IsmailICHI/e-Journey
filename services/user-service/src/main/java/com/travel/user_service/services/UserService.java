@@ -82,10 +82,24 @@ public class UserService {
                 user.getState());
     }
 
-    public UserProfileResponse updateUserRole(Long id, String roleInput) {
-        User user = userRepository.findById(id)
+    public UserProfileResponse getUserProfile(Long userId) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return new UserProfileResponse(
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole().name(),
+                user.getState());
+    }
 
+    public com.travel.user_service.dto.profile.PublicManagerResponse getPublicManagerProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .filter(candidate -> candidate.getRole() == Role.TRAVEL_MANAGER)
+                .orElseThrow(() -> new ResourceNotFoundException("Travel manager not found"));
+        return new com.travel.user_service.dto.profile.PublicManagerResponse(user.getId(), user.getFullName());
+    }
+
+    public UserProfileResponse updateUserRole(Long id, String roleInput) {
         String normalizedRole = roleInput == null ? "" : roleInput.trim();
         if (normalizedRole.isBlank()) {
             throw new BadRequestException("Role is required");
@@ -98,6 +112,8 @@ public class UserService {
             throw new BadRequestException("Unsupported role: " + normalizedRole);
         }
 
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         user.setRole(role);
         userRepository.save(user);
         tokenRevocationService.revokeUserTokens(user.getId());

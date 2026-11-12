@@ -27,6 +27,9 @@ jwt:
   secret: ${JWT_SECRET:defaultsecretkeydefaultsecretkeydefaultsecretkey}
   expiration: ${JWT_EXPIRATION:3600000}
 
+booking-service:
+  base-url: ${BOOKING_SERVICE_URL:http://localhost:8085}
+
 management:
   endpoints:
     web:

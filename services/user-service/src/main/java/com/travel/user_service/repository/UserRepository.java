@@ -22,7 +22,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Modifying
     @Transactional
-    @Query(value = "UPDATE users SET role = 'TRAVELER' WHERE role = 'USER'", nativeQuery = true)
+    @Query(value = "UPDATE users SET role = 'TRAVELER' WHERE CAST(role AS VARCHAR) = 'USER'", nativeQuery = true)
     int migrateLegacyUserRolesToTravelers();
 
     @Query("SELECT u FROM User u WHERE LOWER(u.email) <> LOWER(:email)")
