@@ -5,6 +5,8 @@ import com.travel.travel_service.dto.ItineraryRequest;
 import com.travel.travel_service.dto.TravelRequest;
 import com.travel.travel_service.repository.TravelRepository;
 import com.travel.travel_service.services.TravelService;
+import com.travel.travel_service.services.TravelSearchService;
+import com.travel.travel_service.services.BookingGraphService;
 import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.util.List;
@@ -13,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.context.WebApplicationContext;
@@ -41,6 +44,12 @@ class TravelServiceApplicationTests {
 
 	@Autowired
 	private TravelRepository travelRepository;
+
+	@MockBean
+	private TravelSearchService travelSearchService;
+
+	@MockBean
+	private BookingGraphService bookingGraphService;
 
 	private MockMvc mockMvc;
 

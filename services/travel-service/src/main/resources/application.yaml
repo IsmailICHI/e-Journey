@@ -55,3 +55,5 @@ app:
     uri: ${NEO4J_URI:bolt://localhost:7687}
     username: ${NEO4J_USERNAME:neo4j}
     password: ${NEO4J_PASSWORD:travelplan-local}
+  elasticsearch:
+    url: ${ELASTICSEARCH_URL:http://localhost:9200}

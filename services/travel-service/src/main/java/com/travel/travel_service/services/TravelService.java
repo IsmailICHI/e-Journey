@@ -27,9 +27,18 @@ public class TravelService {
         private static final int ADMIN_PAGE_SIZE = 5;
 
         private final TravelRepository travelRepository;
+        private final TravelSearchService travelSearchService;
+        private final BookingGraphService bookingGraphService;
+        private volatile boolean searchIndexInitialized;
+        private volatile boolean graphCatalogInitialized;
 
-        public TravelService(TravelRepository travelRepository) {
+        public TravelService(
+                TravelRepository travelRepository,
+                TravelSearchService travelSearchService,
+                BookingGraphService bookingGraphService) {
                 this.travelRepository = travelRepository;
+                this.travelSearchService = travelSearchService;
+                this.bookingGraphService = bookingGraphService;
         }
 
         @Transactional(readOnly = true)
@@ -73,6 +82,48 @@ public class TravelService {
                                 .toList();
         }
 
+        @Transactional(readOnly = true)
+        public List<TravelResponse> searchTravels(String query, int limit) {
+                if (!searchIndexInitialized) {
+                        synchronized (this) {
+                                if (!searchIndexInitialized) {
+                                        travelSearchService.ensureIndex();
+                                        travelRepository.findAllByOrderByTravelIdAsc().stream()
+                                                        .map(this::toResponse)
+                                                        .forEach(travelSearchService::index);
+                                        searchIndexInitialized = true;
+                                }
+                        }
+                }
+                return travelSearchService.search(query, limit);
+        }
+
+        @Transactional(readOnly = true)
+        public List<TravelResponse> getRecommendations(Long userId, int limit) {
+                if (!graphCatalogInitialized) {
+                        synchronized (this) {
+                                if (!graphCatalogInitialized) {
+                                        travelRepository.findAllByOrderByTravelIdAsc().stream()
+                                                        .map(this::toResponse)
+                                                        .forEach(bookingGraphService::indexTravel);
+                                        graphCatalogInitialized = true;
+                                }
+                        }
+                }
+                return bookingGraphService.recommendTravels(userId, limit).stream()
+                                .map(this::getTravel)
+                                .flatMap(Optional::stream)
+                                .toList();
+        }
+
+        @Transactional(readOnly = true)
+        public List<TravelResponse> getManagerTravels(Long managerId) {
+                return travelRepository.findAllByOrderByTravelIdAsc().stream()
+                                .filter(travel -> managerId.equals(travel.getCreatedByUserId()))
+                                .map(this::toResponse)
+                                .toList();
+        }
+
         private TravelResponse toResponse(TravelEntity travel) {
                 List<ItineraryResponse> itinerary = travel.getItinerary()
                                 .stream()
@@ -108,7 +159,10 @@ public class TravelService {
                 TravelEntity travel = new TravelEntity();
                 applyRequest(travel, request);
                 travel.setCreatedByUserId(creatorId);
-                return toResponse(travelRepository.save(travel));
+                TravelResponse created = toResponse(travelRepository.save(travel));
+                travelSearchService.index(created);
+                bookingGraphService.indexTravel(created);
+                return created;
         }
 
         @Transactional
@@ -117,7 +171,10 @@ public class TravelService {
                         .filter(travel -> admin || actorId.equals(travel.getCreatedByUserId()))
                         .map(travel -> {
                         applyRequest(travel, request);
-                        return toResponse(travelRepository.save(travel));
+                        TravelResponse updated = toResponse(travelRepository.save(travel));
+                        travelSearchService.index(updated);
+                        bookingGraphService.indexTravel(updated);
+                        return updated;
                 });
         }
 
@@ -128,6 +185,8 @@ public class TravelService {
                         return false;
                 }
                 travelRepository.delete(travel);
+                travelSearchService.delete(id);
+                bookingGraphService.deleteTravel(id);
                 return true;
         }
 

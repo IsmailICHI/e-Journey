@@ -52,8 +52,14 @@ public class travelController {
 
     @GetMapping("/{id}")
     public ResponseEntity<TravelResponse> getById(
-            @PathVariable @Positive(message = "Travel ID must be a positive number") Long id) {
+            @PathVariable @Positive(message = "Travel ID must be a positive number") Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        boolean admin = "ADMIN".equals(jwt.getClaimAsString("role"));
+        Object claim = jwt.getClaim("userId");
         TravelResponse travel = travelService.getTravel(id)
+                .filter(item -> admin || (claim instanceof Number ownerId
+                        && java.util.Objects.equals(
+                                Long.valueOf(ownerId.longValue()), item.createdByUserId())))
                 .orElseThrow(() -> new ResourceNotFoundException("Travel with ID " + id + " not found"));
         return ResponseEntity.ok(travel);
     }

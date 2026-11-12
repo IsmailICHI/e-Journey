@@ -34,7 +34,9 @@ public class SecurityConfig {
 
    @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web) -> web.ignoring().requestMatchers("/actuator/**", "/api/v1/places/public");
+        return (web) -> web.ignoring().requestMatchers(
+                "/actuator/**", "/api/v1/places/public", "/api/v1/places/search",
+                "/api/v1/places/managers/*/travels");
     }
 
     @Bean
