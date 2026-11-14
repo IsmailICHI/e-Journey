@@ -185,8 +185,7 @@
     </section>
 
     <div *ngIf="isTravelEditorOpen"
-      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 p-3 backdrop-blur-md sm:items-center sm:p-6"
-      (click)="cancelTravelEdit()">
+      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 p-3 backdrop-blur-md sm:items-center sm:p-6">
       <section id="travel-editor" role="dialog" aria-modal="true" aria-labelledby="travel-editor-title"
         class="my-auto max-h-[calc(100svh-1.5rem)] w-full max-w-4xl overflow-y-auto rounded-xl border border-white/15 bg-[#100f0e] shadow-[0_32px_120px_rgba(0,0,0,0.75)] sm:max-h-[calc(100svh-3rem)]"
         (click)="$event.stopPropagation()">

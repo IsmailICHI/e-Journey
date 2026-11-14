@@ -34,12 +34,14 @@ export class TravelerDashboardComponent implements OnInit {
   bookings: BookingResponse[] = [];
   statistics: TravelerStatisticsResponse | null = null;
   reports: ReportResponse[] = [];
+  selectedTravel: TravelResponse | null = null;
   loading = false;
   loadingBookings = false;
   search = '';
   errorMessage = '';
   successMessage = '';
   readonly bookingTravelIds = new Set<number>();
+  readonly preparingPaymentBookingIds = new Set<number>();
   readonly feedbackDrafts: Record<number, { rating: number; comment: string }> = {};
   readonly pendingPayments = new Map<number, PaymentOrderResponse>();
   readonly submittingFeedbackIds = new Set<number>();
@@ -101,6 +103,14 @@ export class TravelerDashboardComponent implements OnInit {
     this.search = travel.title;
     this.searchSuggestions = [];
     this.searchResults = [travel];
+  }
+
+  showTravelDetails(travel: TravelResponse): void {
+    this.selectedTravel = travel;
+  }
+
+  closeTravelDetails(): void {
+    this.selectedTravel = null;
   }
 
   private loadRecommendations(): void {
@@ -188,17 +198,7 @@ export class TravelerDashboardComponent implements OnInit {
         this.successMessage = `Booking #${booking.id} created. Preparing your ${booking.paymentMethod ?? 'PayPal'} checkout…`;
         this.bookingTravelIds.delete(travel.travelId);
         this.loadBookings();
-        this.paymentService.createOrder(booking.id).subscribe({
-          next: (order) => {
-            this.pendingPayments.set(booking.id, order);
-            this.successMessage = order.provider === 'STRIPE'
-              ? `Booking #${booking.id} is ready. Continue to Stripe checkout to complete your payment.`
-              : `Booking #${booking.id} is ready. Continue to PayPal, approve the payment, then verify it here.`;
-          },
-          error: (error: unknown) => {
-            this.errorMessage = `Your booking was saved, but payment setup failed: ${getApiErrorMessage(error)}`;
-          }
-        });
+        this.preparePayment(booking);
       },
       error: (error: unknown) => {
         this.errorMessage = getApiErrorMessage(error);
@@ -223,6 +223,32 @@ export class TravelerDashboardComponent implements OnInit {
     const today = new Date();
     const cutoff = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 3));
     return booking.departureDate > cutoff.toISOString().slice(0, 10);
+  }
+
+  canLeaveFeedback(booking: BookingResponse): boolean {
+    return booking.status === 'CONFIRMED'
+      && !!booking.departureDate
+      && booking.departureDate < new Date().toISOString().slice(0, 10);
+  }
+
+  preparePayment(booking: BookingResponse): void {
+    if (booking.status !== 'PENDING_PAYMENT' || this.preparingPaymentBookingIds.has(booking.id)) {
+      return;
+    }
+    this.preparingPaymentBookingIds.add(booking.id);
+    this.paymentService.createOrder(booking.id).subscribe({
+      next: (order) => {
+        this.pendingPayments.set(booking.id, order);
+        this.successMessage = order.provider === 'STRIPE'
+          ? `Booking #${booking.id} is ready. Continue to Stripe checkout to complete your payment.`
+          : `Booking #${booking.id} is ready. Continue to PayPal, approve the payment, then verify it here.`;
+        this.preparingPaymentBookingIds.delete(booking.id);
+      },
+      error: (error: unknown) => {
+        this.errorMessage = getApiErrorMessage(error);
+        this.preparingPaymentBookingIds.delete(booking.id);
+      }
+    });
   }
 
   cancelSubscription(booking: BookingResponse): void {

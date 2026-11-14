@@ -19,7 +19,7 @@
         <p class="mt-2 text-sm text-stone-400">Start saving places worth dreaming about.</p>
         <form #registerForm="ngForm" (ngSubmit)="submit()" class="mx-auto mt-6 w-full max-w-[22rem] space-y-3 text-left sm:mt-8 sm:space-y-4">
           <label class="block text-xs text-stone-300" for="register-name">Full name
-            <input id="register-name" name="name" type="text" [(ngModel)]="name" required minlength="3" maxlength="15" autocomplete="name" placeholder="Your name" class="mt-2 block w-full border border-white/15 bg-white/[0.04] px-3 py-3 text-sm text-white outline-none transition focus:border-rose-100/70 sm:px-4" />
+            <input id="register-name" name="name" type="text" [(ngModel)]="name" required minlength="3" maxlength="25" autocomplete="name" placeholder="Your name" class="mt-2 block w-full border border-white/15 bg-white/[0.04] px-3 py-3 text-sm text-white outline-none transition focus:border-rose-100/70 sm:px-4" />
           </label>
           <label class="block text-xs text-stone-300" for="register-email">Email address
             <input id="register-email" name="email" type="email" [(ngModel)]="email" required email autocomplete="email" placeholder="you@example.com" class="mt-2 block w-full border border-white/15 bg-white/[0.04] px-3 py-3 text-sm text-white outline-none transition focus:border-rose-100/70 sm:px-4" />

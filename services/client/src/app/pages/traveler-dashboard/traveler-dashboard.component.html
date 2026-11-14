@@ -52,6 +52,10 @@
           <div class="flex flex-1 flex-col p-5">
             <p class="text-[10px] font-semibold tracking-[0.17em] text-[#8b6c38]">{{ travel.city | uppercase }}, {{ travel.country | uppercase }}</p>
             <h3 class="mt-2 text-xl font-medium text-stone-900">{{ travel.title }}</h3>
+            <button type="button" (click)="showTravelDetails(travel)"
+              class="mt-2 self-start text-[10px] font-semibold tracking-[0.1em] text-[#8b6c38] underline underline-offset-2 hover:text-stone-900">
+              VIEW TRAVEL DETAILS
+            </button>
             <a *ngIf="travel.createdByUserId !== null" [routerLink]="['/managers', travel.createdByUserId]"
               class="mt-1 self-start text-[10px] font-medium tracking-[0.08em] text-[#8b6c38] underline underline-offset-2 hover:text-stone-900">
               MEET THE TRAVEL MANAGER
@@ -67,7 +71,7 @@
                 <p *ngIf="travel.priceMad" class="mt-1 text-xs font-semibold text-[#8b6c38]">{{ travel.priceMad | currency:'MAD':'symbol':'1.0-2' }}</p>
                 <p *ngIf="!travel.priceMad" class="mt-1 text-xs font-semibold text-stone-500">Price being updated</p>
               </div>
-              <button type="button" (click)="bookTravel(travel)" [disabled]="bookingTravelIds.has(travel.travelId) || !canBookTravel(travel)"
+              <button type="button" (click)="closeTravelDetails(); bookTravel(travel)" [disabled]="bookingTravelIds.has(travel.travelId) || !canBookTravel(travel)"
                 class="bg-[#171714] px-4 py-3 text-[10px] font-semibold tracking-[0.12em] text-white transition hover:bg-[#8b6c38] disabled:cursor-wait disabled:opacity-50">
                 {{ bookingTravelIds.has(travel.travelId) ? 'RESERVING…' : !travel.startDate ? 'DATES PENDING' : !travel.priceMad || travel.priceMad <= 0 ? 'PRICE PENDING' : !canBookTravel(travel) ? 'DEPARTURE TOO SOON' : 'BOOK JOURNEY' }}
               </button>
@@ -92,6 +96,10 @@
           <p class="text-[10px] font-semibold tracking-[0.12em] text-[#8b6c38]">{{ travel.city }}, {{ travel.country }}</p>
           <h3 class="mt-2 font-medium text-stone-900">{{ travel.title }}</h3>
           <p class="mt-1 text-xs text-stone-500">{{ travel.duration }} days · {{ travel.priceMad | currency:'MAD':'symbol':'1.0-2' }}</p>
+          <button type="button" (click)="showTravelDetails(travel)"
+            class="mt-3 block text-[10px] font-semibold tracking-[0.1em] text-[#8b6c38] underline underline-offset-2">
+            VIEW DETAILS
+          </button>
           <button type="button" (click)="bookTravel(travel)" [disabled]="bookingTravelIds.has(travel.travelId) || !canBookTravel(travel)"
             class="mt-4 bg-[#171714] px-4 py-2.5 text-[10px] font-semibold tracking-[0.1em] text-white disabled:opacity-50">
             {{ bookingTravelIds.has(travel.travelId) ? 'RESERVING…' : !canBookTravel(travel) ? 'NOT AVAILABLE TO BOOK' : 'BOOK JOURNEY' }}
@@ -123,6 +131,13 @@
             </div>
             <p class="mt-1 text-xs text-stone-500">Booking #{{ booking.id }} · {{ booking.createdAt | date:'mediumDate' }}</p>
             <p class="mt-1 text-xs text-stone-600">{{ booking.priceMad | currency:'MAD':'symbol':'1.0-2' }}</p>
+            <div *ngIf="booking.status === 'PENDING_PAYMENT' && !pendingPayments.has(booking.id)" class="mt-3">
+              <button type="button" (click)="preparePayment(booking)"
+                [disabled]="preparingPaymentBookingIds.has(booking.id)"
+                class="bg-[#171714] px-4 py-2 text-[10px] font-semibold tracking-[0.1em] text-white disabled:opacity-50">
+                {{ preparingPaymentBookingIds.has(booking.id) ? 'PREPARING CHECKOUT…' : 'CONTINUE TO PAYMENT' }}
+              </button>
+            </div>
             <div *ngIf="pendingPayments.has(booking.id)" class="mt-4 flex flex-wrap items-center gap-3">
               <a [href]="pendingPayments.get(booking.id)?.approvalUrl" target="_blank" rel="noopener noreferrer"
                 class="inline-flex border border-[#8b6c38] px-4 py-2 text-[10px] font-semibold tracking-[0.1em] text-[#72582f] hover:bg-[#f7f0e2]">
@@ -131,6 +146,9 @@
               <button *ngIf="pendingPayments.get(booking.id)?.provider === 'PAYPAL'" type="button" (click)="capturePayment(booking.id)" class="bg-[#171714] px-4 py-2 text-[10px] font-semibold tracking-[0.1em] text-white">
                 VERIFY PAYPAL PAYMENT
               </button>
+              <p class="w-full text-[10px] leading-5 text-stone-500">
+                Complete checkout with {{ pendingPayments.get(booking.id)?.provider }}. For PayPal, approve the payment there, return here, and verify it.
+              </p>
             </div>
             <div *ngIf="booking.status === 'PENDING_PAYMENT'" class="mt-3">
               <button *ngIf="canCancelSubscription(booking)" type="button" (click)="cancelSubscription(booking)"
@@ -144,7 +162,7 @@
           </div>
           <div *ngIf="booking.status === 'CANCELLED'" class="text-xs font-medium text-stone-500">Booking cancelled</div>
           <div *ngIf="booking.feedbackSubmitted" class="text-xs font-medium text-emerald-700">Feedback submitted</div>
-          <form *ngIf="booking.status === 'CONFIRMED' && !booking.feedbackSubmitted" (ngSubmit)="submitFeedback(booking)" class="space-y-2 sm:min-w-72">
+          <form *ngIf="canLeaveFeedback(booking) && !booking.feedbackSubmitted" (ngSubmit)="submitFeedback(booking)" class="space-y-2 sm:min-w-72">
             <label class="sr-only" [for]="'rating-' + booking.id">Rating</label>
             <select [id]="'rating-' + booking.id" [name]="'rating-' + booking.id"
               [(ngModel)]="feedbackDrafts[booking.id].rating" class="w-full border border-stone-300 bg-white px-3 py-2 text-xs">
@@ -162,6 +180,8 @@
             <button type="submit" [disabled]="!feedbackDrafts[booking.id].comment.trim() || submittingFeedbackIds.has(booking.id)"
               class="border border-stone-800 px-4 py-2 text-[10px] font-semibold tracking-[0.1em] text-stone-800 disabled:opacity-40">SUBMIT FEEDBACK</button>
           </form>
+          <p *ngIf="booking.status === 'CONFIRMED' && !canLeaveFeedback(booking) && !booking.feedbackSubmitted"
+            class="text-xs text-stone-500">You can leave feedback after this journey’s departure date.</p>
         </article>
       </div>
     </section>
@@ -181,6 +201,62 @@
     </section>
   </div>
 </main>
+
+<div *ngIf="selectedTravel as travel" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4"
+  (click)="closeTravelDetails()">
+  <section role="dialog" aria-modal="true" aria-labelledby="travel-details-title"
+    class="my-auto max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-stone-200 bg-white shadow-2xl"
+    (click)="$event.stopPropagation()">
+    <img *ngIf="travel.imageUrl" [src]="travel.imageUrl" [alt]="travel.title" class="h-56 w-full object-cover sm:h-72">
+    <div class="p-5 sm:p-8">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-[10px] font-semibold tracking-[0.17em] text-[#8b6c38]">{{ travel.city }}, {{ travel.country }}</p>
+          <h2 id="travel-details-title" class="mt-2 text-2xl font-medium text-stone-900">{{ travel.title }}</h2>
+        </div>
+        <button type="button" (click)="closeTravelDetails()" aria-label="Close travel details"
+          class="shrink-0 border border-stone-300 px-3 py-2 text-xs text-stone-600 hover:bg-stone-100">CLOSE</button>
+      </div>
+      <p class="mt-4 whitespace-pre-line text-sm leading-6 text-stone-600">{{ travel.description || 'Explore the itinerary and trip details below.' }}</p>
+      <div class="mt-5 grid gap-4 border-y border-stone-200 py-4 text-sm sm:grid-cols-2">
+        <p><span class="text-xs text-stone-500">Departure</span><br>{{ travel.startDate ? (travel.startDate | date:'longDate') : 'Dates to be announced' }}</p>
+        <p><span class="text-xs text-stone-500">Duration</span><br>{{ travel.duration }} days</p>
+        <p><span class="text-xs text-stone-500">Price</span><br>{{ travel.priceMad ? (travel.priceMad | currency:'MAD':'symbol':'1.0-2') : 'Price being updated' }}</p>
+        <p><span class="text-xs text-stone-500">Payment</span><br>{{ travel.paymentMethod || 'PayPal' }}</p>
+        <p *ngIf="travel.accommodation"><span class="text-xs text-stone-500">Accommodation</span><br>{{ travel.accommodation }}</p>
+        <p *ngIf="travel.transportation"><span class="text-xs text-stone-500">Transportation</span><br>{{ travel.transportation }}</p>
+      </div>
+      <div *ngIf="travel.destinations.length" class="mt-5">
+        <h3 class="text-xs font-semibold tracking-[0.1em] text-stone-700">DESTINATIONS</h3>
+        <p class="mt-2 text-sm text-stone-600">{{ travel.destinations.join(', ') }}</p>
+      </div>
+      <div *ngIf="travel.itinerary.length" class="mt-6">
+        <h3 class="text-xs font-semibold tracking-[0.1em] text-stone-700">ITINERARY</h3>
+        <ol class="mt-3 space-y-3">
+          <li *ngFor="let day of travel.itinerary" class="border-l-2 border-[#c5a059] pl-4">
+            <p class="text-[10px] font-semibold tracking-[0.1em] text-[#8b6c38]">DAY {{ day.dayNumber }}</p>
+            <h4 class="mt-1 text-sm font-medium text-stone-900">{{ day.title }}</h4>
+            <p *ngIf="day.description" class="mt-1 text-xs leading-5 text-stone-600">{{ day.description }}</p>
+            <ul *ngIf="day.activities.length" class="mt-2 list-inside list-disc text-xs leading-5 text-stone-500">
+              <li *ngFor="let activity of day.activities">{{ activity }}</li>
+            </ul>
+          </li>
+        </ol>
+      </div>
+      <a *ngIf="travel.createdByUserId !== null" [routerLink]="['/managers', travel.createdByUserId]"
+        (click)="closeTravelDetails()" class="mt-5 inline-block text-xs font-medium text-[#8b6c38] underline underline-offset-2">
+        MEET THE TRAVEL MANAGER
+      </a>
+      <p class="mt-6 border-t border-stone-200 pt-4 text-xs leading-5 text-stone-500">
+        After you book and complete the journey, use the Bookings & feedback section below to share your rating and experience.
+      </p>
+      <button type="button" (click)="bookTravel(travel)" [disabled]="bookingTravelIds.has(travel.travelId) || !canBookTravel(travel)"
+        class="mt-4 bg-[#171714] px-5 py-3 text-[10px] font-semibold tracking-[0.12em] text-white disabled:opacity-50">
+        {{ bookingTravelIds.has(travel.travelId) ? 'RESERVING…' : !canBookTravel(travel) ? 'NOT AVAILABLE TO BOOK' : 'BOOK THIS JOURNEY' }}
+      </button>
+    </div>
+  </section>
+</div>
 
 <div *ngIf="selectedReportTravel as travel" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" (click)="closeReport()">
   <section role="dialog" aria-modal="true" aria-labelledby="report-title" class="w-full max-w-lg border border-stone-200 bg-white p-6 shadow-2xl" (click)="$event.stopPropagation()">
