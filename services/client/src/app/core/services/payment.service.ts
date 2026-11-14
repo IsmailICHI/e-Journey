@@ -10,7 +10,10 @@ export interface PaymentOrderResponse {
   travelId: number | null;
   managerId: number | null;
   amount: number;
+  amountMad: number;
+  madPerUsdRate: number | null;
   currency: string;
+  providerOrderId: string | null;
   provider: 'PAYPAL' | 'STRIPE';
   status: string;
   approvalUrl: string;
@@ -21,8 +24,8 @@ export class PaymentService {
   private readonly http = inject(HttpClient);
   private readonly paymentsUrl = `${environment.apiUrl}/api/v1/payments`;
 
-  createOrder(bookingId: number): Observable<PaymentOrderResponse> {
-    return this.http.post<PaymentOrderResponse>(`${this.paymentsUrl}/orders`, { bookingId });
+  createOrder(bookingId: number, restart = false): Observable<PaymentOrderResponse> {
+    return this.http.post<PaymentOrderResponse>(`${this.paymentsUrl}/orders`, { bookingId, restart });
   }
 
   capture(paymentId: number): Observable<PaymentOrderResponse> {

@@ -346,6 +346,10 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedTravel = travel;
   }
 
+  activitiesFor(travel: TravelResponse): string[] {
+    return travel.itinerary.flatMap((entry) => entry.activities);
+  }
+
   closeTravelDetails(): void {
     this.selectedTravel = null;
   }
@@ -524,12 +528,14 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
       .split(/\r?\n/)
       .map((activity) => activity.trim())
       .filter(Boolean);
-    const itinerary: ItineraryRequest[] = activities.map((activity, index) => ({
-      dayNumber: index + 1,
-      title: `Day ${index + 1}`,
-      description: '',
-      activities: [activity]
-    }));
+    const itinerary: ItineraryRequest[] = activities.length
+      ? [{
+          dayNumber: 1,
+          title: 'Activities',
+          description: '',
+          activities
+        }]
+      : [];
 
     return {
       title: this.travelForm.title.trim(),

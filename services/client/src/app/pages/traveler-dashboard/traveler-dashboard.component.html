@@ -131,24 +131,11 @@
             </div>
             <p class="mt-1 text-xs text-stone-500">Booking #{{ booking.id }} · {{ booking.createdAt | date:'mediumDate' }}</p>
             <p class="mt-1 text-xs text-stone-600">{{ booking.priceMad | currency:'MAD':'symbol':'1.0-2' }}</p>
-            <div *ngIf="booking.status === 'PENDING_PAYMENT' && !pendingPayments.has(booking.id)" class="mt-3">
-              <button type="button" (click)="preparePayment(booking)"
-                [disabled]="preparingPaymentBookingIds.has(booking.id)"
-                class="bg-[#171714] px-4 py-2 text-[10px] font-semibold tracking-[0.1em] text-white disabled:opacity-50">
-                {{ preparingPaymentBookingIds.has(booking.id) ? 'PREPARING CHECKOUT…' : 'CONTINUE TO PAYMENT' }}
-              </button>
-            </div>
-            <div *ngIf="pendingPayments.has(booking.id)" class="mt-4 flex flex-wrap items-center gap-3">
-              <a [href]="pendingPayments.get(booking.id)?.approvalUrl" target="_blank" rel="noopener noreferrer"
-                class="inline-flex border border-[#8b6c38] px-4 py-2 text-[10px] font-semibold tracking-[0.1em] text-[#72582f] hover:bg-[#f7f0e2]">
-                CONTINUE TO {{ pendingPayments.get(booking.id)?.provider }}
+            <div *ngIf="booking.status === 'PENDING_PAYMENT'" class="mt-3">
+              <a [routerLink]="['/payment', booking.id]"
+                class="inline-flex bg-[#171714] px-4 py-2 text-[10px] font-semibold tracking-[0.1em] text-white hover:bg-[#8b6c38]">
+                CONTINUE TO PAYMENT
               </a>
-              <button *ngIf="pendingPayments.get(booking.id)?.provider === 'PAYPAL'" type="button" (click)="capturePayment(booking.id)" class="bg-[#171714] px-4 py-2 text-[10px] font-semibold tracking-[0.1em] text-white">
-                VERIFY PAYPAL PAYMENT
-              </button>
-              <p class="w-full text-[10px] leading-5 text-stone-500">
-                Complete checkout with {{ pendingPayments.get(booking.id)?.provider }}. For PayPal, approve the payment there, return here, and verify it.
-              </p>
             </div>
             <div *ngIf="booking.status === 'PENDING_PAYMENT'" class="mt-3">
               <button *ngIf="canCancelSubscription(booking)" type="button" (click)="cancelSubscription(booking)"
@@ -205,56 +192,78 @@
 <div *ngIf="selectedTravel as travel" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4"
   (click)="closeTravelDetails()">
   <section role="dialog" aria-modal="true" aria-labelledby="travel-details-title"
-    class="my-auto max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-stone-200 bg-white shadow-2xl"
+    class="my-auto max-h-[92vh] w-full max-w-4xl overflow-y-auto border border-white/15 bg-[#11110f] text-stone-100 shadow-[0_32px_120px_rgba(0,0,0,0.75)]"
     (click)="$event.stopPropagation()">
-    <img *ngIf="travel.imageUrl" [src]="travel.imageUrl" [alt]="travel.title" class="h-56 w-full object-cover sm:h-72">
-    <div class="p-5 sm:p-8">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <p class="text-[10px] font-semibold tracking-[0.17em] text-[#8b6c38]">{{ travel.city }}, {{ travel.country }}</p>
-          <h2 id="travel-details-title" class="mt-2 text-2xl font-medium text-stone-900">{{ travel.title }}</h2>
-        </div>
+      <div class="relative min-h-64 overflow-hidden bg-[#1d1b17] sm:min-h-80">
+        <img *ngIf="travel.imageUrl" [src]="travel.imageUrl" [alt]="travel.title" class="absolute inset-0 h-full w-full object-cover opacity-65">
+        <div class="absolute inset-0 bg-gradient-to-t from-[#11110f] via-[#11110f]/30 to-black/20"></div>
         <button type="button" (click)="closeTravelDetails()" aria-label="Close travel details"
-          class="shrink-0 border border-stone-300 px-3 py-2 text-xs text-stone-600 hover:bg-stone-100">CLOSE</button>
+          class="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center border border-white/40 bg-black/40 text-lg text-white backdrop-blur transition hover:bg-white hover:text-black">×</button>
+        <div class="absolute inset-x-0 bottom-0 p-6 sm:p-9">
+          <p class="text-[10px] font-semibold tracking-[0.22em] text-[#e2c888]">{{ travel.city | uppercase }} · {{ travel.country | uppercase }}</p>
+          <h2 id="travel-details-title" class="mt-3 max-w-3xl font-sans-clean text-3xl font-light sm:text-5xl">{{ travel.title }}</h2>
+          <p class="mt-3 max-w-2xl text-sm leading-6 text-stone-200">{{ travel.description || 'A thoughtfully planned journey awaits.' }}</p>
+        </div>
       </div>
-      <p class="mt-4 whitespace-pre-line text-sm leading-6 text-stone-600">{{ travel.description || 'Explore the itinerary and trip details below.' }}</p>
-      <div class="mt-5 grid gap-4 border-y border-stone-200 py-4 text-sm sm:grid-cols-2">
-        <p><span class="text-xs text-stone-500">Departure</span><br>{{ travel.startDate ? (travel.startDate | date:'longDate') : 'Dates to be announced' }}</p>
-        <p><span class="text-xs text-stone-500">Duration</span><br>{{ travel.duration }} days</p>
-        <p><span class="text-xs text-stone-500">Price</span><br>{{ travel.priceMad ? (travel.priceMad | currency:'MAD':'symbol':'1.0-2') : 'Price being updated' }}</p>
-        <p><span class="text-xs text-stone-500">Payment</span><br>{{ travel.paymentMethod || 'PayPal' }}</p>
-        <p *ngIf="travel.accommodation"><span class="text-xs text-stone-500">Accommodation</span><br>{{ travel.accommodation }}</p>
-        <p *ngIf="travel.transportation"><span class="text-xs text-stone-500">Transportation</span><br>{{ travel.transportation }}</p>
+      <div class="grid gap-px bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
+        <article class="bg-[#171714] p-5">
+          <p class="text-[9px] tracking-[0.18em] text-stone-500">DEPARTURE</p>
+          <p class="mt-2 text-sm text-stone-100">{{ travel.startDate ? (travel.startDate | date:'longDate') : 'Dates to be announced' }}</p>
+          <p *ngIf="travel.endDate" class="mt-1 text-xs text-stone-400">Returns {{ travel.endDate | date:'longDate' }}</p>
+        </article>
+        <article class="bg-[#171714] p-5">
+          <p class="text-[9px] tracking-[0.18em] text-stone-500">DURATION</p>
+          <p class="mt-2 text-sm text-stone-100">{{ travel.duration }} days</p>
+        </article>
+        <article class="bg-[#171714] p-5">
+          <p class="text-[9px] tracking-[0.18em] text-stone-500">PRICE PER TRAVELER</p>
+          <p class="mt-2 text-lg font-medium text-[#e2c888]">{{ travel.priceMad ? (travel.priceMad | currency:'MAD':'symbol':'1.0-2') : 'Price being updated' }}</p>
+        </article>
+        <article class="bg-[#171714] p-5">
+          <p class="text-[9px] tracking-[0.18em] text-stone-500">ACCOMMODATION</p>
+          <p class="mt-2 text-sm text-stone-100">{{ travel.accommodation || 'Details to be announced' }}</p>
+        </article>
+        <article class="bg-[#171714] p-5">
+          <p class="text-[9px] tracking-[0.18em] text-stone-500">TRANSPORTATION</p>
+          <p class="mt-2 text-sm text-stone-100">{{ travel.transportation || 'Details to be announced' }}</p>
+        </article>
+        <article class="bg-[#171714] p-5">
+          <p class="text-[9px] tracking-[0.18em] text-stone-500">PAYMENT METHOD</p>
+          <p class="mt-2 text-sm text-stone-100">{{ travel.paymentMethod || 'PayPal' }}</p>
+        </article>
       </div>
-      <div *ngIf="travel.destinations.length" class="mt-5">
-        <h3 class="text-xs font-semibold tracking-[0.1em] text-stone-700">DESTINATIONS</h3>
-        <p class="mt-2 text-sm text-stone-600">{{ travel.destinations.join(', ') }}</p>
+      <div class="grid gap-8 p-6 sm:p-9 lg:grid-cols-[1fr_0.8fr]">
+        <section *ngIf="travel.itinerary.length">
+          <p class="text-[9px] font-semibold tracking-[0.2em] text-[#e2c888]">ON THIS JOURNEY</p>
+          <h3 class="mt-2 font-sans-clean text-2xl font-light">Experiences</h3>
+          <ul class="mt-5 grid gap-2 sm:grid-cols-2">
+            <li *ngFor="let activity of activitiesFor(travel)"
+              class="flex items-start gap-3 border border-white/10 bg-white/[0.03] px-3 py-3 text-xs leading-5 text-stone-300">
+              <span class="mt-1.5 h-1.5 w-1.5 shrink-0 bg-[#c5a059]"></span>{{ activity }}
+            </li>
+          </ul>
+        </section>
+        <div class="space-y-6">
+          <section *ngIf="travel.destinations.length">
+            <p class="text-[9px] font-semibold tracking-[0.2em] text-[#e2c888]">DESTINATIONS</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <span *ngFor="let destination of travel.destinations"
+                class="border border-white/15 px-3 py-2 text-xs text-stone-300">{{ destination }}</span>
+            </div>
+          </section>
+          <a *ngIf="travel.createdByUserId !== null" [routerLink]="['/managers', travel.createdByUserId]"
+            (click)="closeTravelDetails()" class="block border-t border-white/10 pt-5 text-xs font-medium tracking-[0.08em] text-[#e2c888] hover:text-white">
+            MEET YOUR TRAVEL MANAGER →
+          </a>
+        </div>
       </div>
-      <div *ngIf="travel.itinerary.length" class="mt-6">
-        <h3 class="text-xs font-semibold tracking-[0.1em] text-stone-700">ITINERARY</h3>
-        <ol class="mt-3 space-y-3">
-          <li *ngFor="let day of travel.itinerary" class="border-l-2 border-[#c5a059] pl-4">
-            <p class="text-[10px] font-semibold tracking-[0.1em] text-[#8b6c38]">DAY {{ day.dayNumber }}</p>
-            <h4 class="mt-1 text-sm font-medium text-stone-900">{{ day.title }}</h4>
-            <p *ngIf="day.description" class="mt-1 text-xs leading-5 text-stone-600">{{ day.description }}</p>
-            <ul *ngIf="day.activities.length" class="mt-2 list-inside list-disc text-xs leading-5 text-stone-500">
-              <li *ngFor="let activity of day.activities">{{ activity }}</li>
-            </ul>
-          </li>
-        </ol>
-      </div>
-      <a *ngIf="travel.createdByUserId !== null" [routerLink]="['/managers', travel.createdByUserId]"
-        (click)="closeTravelDetails()" class="mt-5 inline-block text-xs font-medium text-[#8b6c38] underline underline-offset-2">
-        MEET THE TRAVEL MANAGER
-      </a>
-      <p class="mt-6 border-t border-stone-200 pt-4 text-xs leading-5 text-stone-500">
-        After you book and complete the journey, use the Bookings & feedback section below to share your rating and experience.
-      </p>
-      <button type="button" (click)="bookTravel(travel)" [disabled]="bookingTravelIds.has(travel.travelId) || !canBookTravel(travel)"
-        class="mt-4 bg-[#171714] px-5 py-3 text-[10px] font-semibold tracking-[0.12em] text-white disabled:opacity-50">
-        {{ bookingTravelIds.has(travel.travelId) ? 'RESERVING…' : !canBookTravel(travel) ? 'NOT AVAILABLE TO BOOK' : 'BOOK THIS JOURNEY' }}
-      </button>
-    </div>
+      <footer class="flex flex-col gap-4 border-t border-white/10 bg-[#171714] p-5 sm:flex-row sm:items-center sm:justify-between sm:px-9 sm:py-6">
+        <p class="max-w-md text-xs leading-5 text-stone-400">Share your experience and leave feedback after you have completed this journey.</p>
+        <button type="button" (click)="closeTravelDetails(); bookTravel(travel)" [disabled]="bookingTravelIds.has(travel.travelId) || !canBookTravel(travel)"
+          class="min-h-12 shrink-0 bg-[#c5a059] px-7 text-[10px] font-bold tracking-[0.14em] text-[#171714] transition hover:bg-[#e2c888] disabled:cursor-not-allowed disabled:opacity-40">
+          {{ bookingTravelIds.has(travel.travelId) ? 'RESERVING…' : !canBookTravel(travel) ? 'NOT AVAILABLE TO BOOK' : 'RESERVE THIS JOURNEY' }}
+        </button>
+      </footer>
   </section>
 </div>
 

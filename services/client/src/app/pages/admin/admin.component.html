@@ -519,16 +519,12 @@
             <p class="mt-1 break-words text-sm text-stone-200">{{ travel.transportation || 'Not specified' }}</p>
           </div>
           <div>
-            <p class="text-[9px] tracking-[0.14em] text-stone-500">ITINERARY & ACTIVITIES</p>
+            <p class="text-[9px] tracking-[0.14em] text-stone-500">ACTIVITIES</p>
             <div *ngIf="travel.itinerary.length; else noItinerary" class="mt-2 space-y-3">
-              <article *ngFor="let day of travel.itinerary" class="border-l border-rose-100/40 pl-3">
-                <p class="text-xs text-rose-100">DAY {{ day.dayNumber }} · {{ day.title }}</p>
-                <p *ngIf="day.description" class="mt-1 text-xs leading-5 text-stone-400">{{ day.description }}</p>
-                <ul *ngIf="day.activities.length"
-                  class="mt-2 list-inside list-disc space-y-1 text-xs leading-5 text-stone-300">
-                  <li *ngFor="let activity of day.activities">{{ activity }}</li>
-                </ul>
-              </article>
+              <ul class="grid gap-2 sm:grid-cols-2">
+                <li *ngFor="let activity of activitiesFor(travel)"
+                  class="border border-white/10 bg-white/[0.03] px-3 py-2 text-xs leading-5 text-stone-300">{{ activity }}</li>
+              </ul>
             </div>
             <ng-template #noItinerary>
               <p class="mt-1 text-sm text-stone-400">No itinerary activities have been added.</p>

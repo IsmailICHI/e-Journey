@@ -205,7 +205,8 @@ export class TravelManagerDashboardComponent implements OnInit {
       accommodation: travel.accommodation ?? '',
       transportation: travel.transportation ?? '',
       paymentMethod: travel.paymentMethod ?? 'PayPal',
-      priceMad: travel.priceMad ?? 0
+      priceMad: travel.priceMad ?? 0,
+      activities: travel.itinerary.flatMap((entry) => entry.activities).join('\n')
     };
     this.errorMessage = '';
     this.isEditorOpen = true;
@@ -218,10 +219,13 @@ export class TravelManagerDashboardComponent implements OnInit {
   }
 
   saveTravel(): void {
+    const activities = this.form.activities.split(/\r?\n/).map((activity) => activity.trim()).filter(Boolean);
     const request: TravelRequest = {
       ...this.form,
       destinations: this.form.destinations.split(',').map((item) => item.trim()).filter(Boolean),
-      itinerary: []
+      itinerary: activities.length
+        ? [{ dayNumber: 1, title: 'Activities', description: '', activities }]
+        : []
     };
     this.saving = true;
     this.errorMessage = '';
@@ -279,7 +283,8 @@ export class TravelManagerDashboardComponent implements OnInit {
       accommodation: '',
       transportation: '',
       paymentMethod: 'PayPal',
-      priceMad: 0
+      priceMad: 0,
+      activities: ''
     };
   }
 }

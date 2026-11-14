@@ -1,0 +1,118 @@
+<app-navbar activePage="home"></app-navbar>
+
+<main class="min-h-screen bg-[#f4efe7] px-4 pb-16 pt-28 text-stone-800 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-5xl">
+    <a routerLink="/traveler-dashboard"
+      class="inline-flex items-center gap-2 text-[10px] font-semibold tracking-[0.15em] text-[#8b6c38] hover:text-stone-900">
+      <span aria-hidden="true">←</span> BACK TO JOURNEYS
+    </a>
+
+    <section class="mt-5 grid overflow-hidden border border-stone-200 bg-white shadow-sm lg:grid-cols-[1fr_0.82fr]">
+      <div class="bg-[#171714] p-7 text-white sm:p-10">
+        <p class="text-[10px] font-semibold tracking-[0.24em] text-[#d9bc76]">SECURE CHECKOUT</p>
+        <h1 class="mt-3 font-sans-clean text-3xl font-light sm:text-4xl">Complete your booking</h1>
+        <p class="mt-3 max-w-lg text-sm leading-6 text-stone-300">
+          Your payment is handled securely by the selected payment provider. We never store your card details.
+        </p>
+
+        <div *ngIf="loading" class="mt-8 border border-white/10 bg-white/5 px-5 py-6 text-sm text-stone-300">
+          Loading your booking…
+        </div>
+        <div *ngIf="errorMessage" role="alert" class="mt-8 border border-red-200/30 bg-red-950/30 px-5 py-4 text-sm leading-6 text-red-100">
+          {{ errorMessage }}
+        </div>
+        <div *ngIf="statusMessage" role="status" class="mt-8 border border-emerald-200/30 bg-emerald-950/30 px-5 py-4 text-sm leading-6 text-emerald-100">
+          {{ statusMessage }}
+        </div>
+
+        <div *ngIf="booking && !loading" class="mt-8 border-t border-white/15 pt-6">
+          <div class="flex items-start justify-between gap-5">
+            <div>
+              <p class="text-[9px] tracking-[0.18em] text-stone-400">YOUR JOURNEY</p>
+              <h2 class="mt-2 text-xl font-medium">{{ booking.travelTitle || ('Journey #' + booking.travelId) }}</h2>
+              <p class="mt-2 text-xs text-stone-400">Booking #{{ booking.id }} · Departs
+                {{ booking.departureDate ? (booking.departureDate | date:'longDate') : 'date unavailable' }}</p>
+            </div>
+            <span class="shrink-0 border border-white/20 px-2.5 py-1.5 text-[9px] tracking-[0.1em] text-stone-300">
+              {{ booking.status.replace('_', ' ') }}
+            </span>
+          </div>
+          <div class="mt-7 flex items-end justify-between border-t border-white/10 pt-5">
+            <span class="text-[10px] tracking-[0.14em] text-stone-400">TOTAL</span>
+            <span class="text-2xl font-light text-[#e2c888]">{{ booking.priceMad | currency:'MAD':'symbol':'1.0-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col justify-center p-7 sm:p-10">
+        <ng-container *ngIf="booking as currentBooking">
+          <div *ngIf="currentBooking.status === 'CONFIRMED'" class="text-center">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-2xl text-emerald-700">✓</div>
+            <h2 class="mt-5 text-xl font-medium text-stone-900">Payment complete</h2>
+            <p class="mt-2 text-sm leading-6 text-stone-500">Your booking is confirmed. Your journey is waiting for you.</p>
+            <a routerLink="/traveler-dashboard"
+              class="mt-7 inline-flex min-h-12 items-center justify-center bg-[#171714] px-6 text-[10px] font-semibold tracking-[0.12em] text-white hover:bg-[#8b6c38]">
+              VIEW MY BOOKINGS
+            </a>
+          </div>
+
+          <div *ngIf="currentBooking.status === 'PENDING_PAYMENT'">
+            <p class="text-[10px] font-semibold tracking-[0.2em] text-[#8b6c38]">PAYMENT METHOD</p>
+            <h2 class="mt-2 text-2xl font-light text-stone-900">{{ order?.provider || currentBooking.paymentMethod || 'Payment' }}</h2>
+            <p class="mt-3 text-sm leading-6 text-stone-500">
+              <ng-container *ngIf="order?.provider === 'PAYPAL'; else stripeInfo">
+                Your booking price in MAD is converted at the configured fixed rate. Approve the USD total with PayPal; you’ll return here automatically while we confirm payment.
+              </ng-container>
+              <ng-template #stripeInfo>
+                Continue to Stripe’s secure checkout to enter your payment details and complete the booking.
+              </ng-template>
+            </p>
+
+            <div *ngIf="preparingOrder" class="mt-7 border border-stone-200 bg-stone-50 px-4 py-4 text-sm text-stone-500">
+              Preparing secure checkout…
+            </div>
+            <button *ngIf="!order && !preparingOrder && !errorMessage" type="button" (click)="preparePayment()"
+              class="mt-7 min-h-12 w-full bg-[#171714] px-5 text-[10px] font-semibold tracking-[0.14em] text-white hover:bg-[#8b6c38]">
+              PREPARE CHECKOUT
+            </button>
+            <a *ngIf="order?.approvalUrl" [href]="order?.approvalUrl"
+              class="mt-7 flex min-h-12 w-full items-center justify-center bg-[#c5a059] px-5 text-center text-[10px] font-bold tracking-[0.12em] text-[#171714] hover:bg-[#d9bc76]">
+              CONTINUE TO {{ order?.provider }}
+            </a>
+            <button *ngIf="order?.provider === 'PAYPAL' && paypalApprovalReturned" type="button" (click)="capturePayPalPayment()"
+              [disabled]="capturingPayment"
+              class="mt-3 min-h-12 w-full border border-stone-300 px-5 text-[10px] font-semibold tracking-[0.12em] text-stone-700 hover:border-stone-500 disabled:opacity-50">
+              {{ capturingPayment ? 'VERIFYING WITH PAYPAL…' : 'RETRY PAYMENT VERIFICATION' }}
+            </button>
+            <button *ngIf="order?.provider === 'PAYPAL' && canRestartPayPalCheckout && !capturingPayment" type="button"
+              (click)="restartPayPalCheckout()"
+              class="mt-3 min-h-12 w-full border border-stone-300 px-5 text-[10px] font-semibold tracking-[0.12em] text-stone-700 hover:border-stone-500">
+              RESTART PAYPAL CHECKOUT
+            </button>
+            <p *ngIf="order" class="mt-4 text-center text-[10px] leading-5 text-stone-400">
+              Amount charged: {{ order.amount | currency:order.currency:'symbol':'1.2-2' }}
+              <ng-container *ngIf="order.provider === 'PAYPAL' && order.madPerUsdRate">
+                · Rate: {{ order.madPerUsdRate }} MAD = 1 USD
+              </ng-container>
+              <br>Payment reference {{ order.paymentId }} · {{ order.currency }}
+            </p>
+          </div>
+
+          <div *ngIf="currentBooking.status !== 'CONFIRMED' && currentBooking.status !== 'PENDING_PAYMENT'"
+            class="text-center">
+            <h2 class="text-xl font-medium text-stone-900">Booking unavailable</h2>
+            <p class="mt-2 text-sm leading-6 text-stone-500">This booking is {{ currentBooking.status.toLowerCase().replace('_', ' ') }} and cannot be paid.</p>
+            <a routerLink="/traveler-dashboard"
+              class="mt-7 inline-flex min-h-12 items-center justify-center border border-stone-300 px-6 text-[10px] font-semibold tracking-[0.12em] text-stone-700 hover:bg-stone-50">
+              BACK TO JOURNEYS
+            </a>
+          </div>
+        </ng-container>
+      </div>
+    </section>
+
+    <p class="mt-5 text-center text-[10px] leading-5 text-stone-500">
+      Questions about your reservation? Return to the traveler dashboard to manage your bookings.
+    </p>
+  </div>
+</main>

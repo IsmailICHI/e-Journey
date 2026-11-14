@@ -244,6 +244,10 @@
         <label class="text-xs font-medium text-stone-600 sm:col-span-2">Description
           <textarea name="description" [(ngModel)]="form.description" maxlength="200" rows="3" class="mt-1.5 w-full border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none focus:border-[#9b793d]"></textarea>
         </label>
+        <label class="text-xs font-medium text-stone-600 sm:col-span-2">Activities <span class="font-normal text-stone-400">(one activity per line; activities are not days)</span>
+          <textarea name="activities" [(ngModel)]="form.activities" maxlength="5000" rows="4" placeholder="Visit the old medina&#10;Sunset walk along the coast"
+            class="mt-1.5 w-full border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none focus:border-[#9b793d]"></textarea>
+        </label>
         <label class="text-xs font-medium text-stone-600 sm:col-span-2">Image URL
           <input name="imageUrl" type="url" [(ngModel)]="form.imageUrl" class="mt-1.5 w-full border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none focus:border-[#9b793d]">
         </label>

@@ -23,6 +23,10 @@ export class BookingService {
     return this.http.get<BookingResponse[]>(`${this.bookingsUrl}/me`);
   }
 
+  getBooking(bookingId: number): Observable<BookingResponse> {
+    return this.http.get<BookingResponse>(`${this.bookingsUrl}/${bookingId}`);
+  }
+
   getMyStatistics(): Observable<TravelerStatisticsResponse> {
     return this.http.get<TravelerStatisticsResponse>(`${this.bookingsUrl}/me/statistics`);
   }

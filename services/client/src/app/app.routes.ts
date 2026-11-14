@@ -37,6 +37,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/traveler-dashboard/traveler-dashboard.component').then((page) => page.TravelerDashboardComponent),
     },
     {
+        path: 'payment/:bookingId',
+        canActivate: [travelerGuard],
+        loadComponent: () => import('./pages/payment/payment.component').then((page) => page.PaymentComponent),
+    },
+    {
         path: 'managers/:id',
         canActivate: [travelerGuard],
         loadComponent: () => import('./pages/manager-profile/manager-profile.component').then((page) => page.ManagerProfileComponent),
