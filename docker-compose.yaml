@@ -254,6 +254,7 @@ services:
       PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+      PAYPAL_MAD_PER_USD: ${PAYPAL_MAD_PER_USD:-10}
       STRIPE_BASE_URL: ${STRIPE_BASE_URL:-https://api.stripe.com}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       CLIENT_BASE_URL: ${CLIENT_BASE_URL:-http://localhost:4200}
