@@ -8,7 +8,10 @@ public record PaymentOrderResponse(
         Long travelId,
         Long managerId,
         java.math.BigDecimal amount,
+        java.math.BigDecimal amountMad,
+        java.math.BigDecimal madPerUsdRate,
         String currency,
+        String providerOrderId,
         String provider,
         String status,
         String approvalUrl) {
@@ -20,7 +23,10 @@ public record PaymentOrderResponse(
                 payment.getTravelId(),
                 payment.getManagerId(),
                 payment.getAmount(),
+                payment.getAmountMad(),
+                payment.getMadPerUsdRate(),
                 payment.getCurrency(),
+                payment.getProviderOrderId(),
                 payment.getProvider(),
                 payment.getStatus().name(),
                 payment.getApprovalUrl());

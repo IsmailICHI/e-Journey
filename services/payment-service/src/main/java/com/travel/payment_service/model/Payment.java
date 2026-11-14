@@ -38,6 +38,12 @@ public class Payment {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @Column(precision = 12, scale = 2)
+    private BigDecimal amountMad;
+
+    @Column(precision = 12, scale = 8)
+    private BigDecimal madPerUsdRate;
+
     @Column(nullable = false, length = 3)
     private String currency;
 
@@ -63,14 +69,16 @@ public class Payment {
     }
 
     public Payment(Long bookingId, Long userId, Long travelId, Long managerId,
-            String travelTitle, BigDecimal amount, String currency, String provider,
-            String providerOrderId, String approvalUrl) {
+            String travelTitle, BigDecimal amount, BigDecimal amountMad, BigDecimal madPerUsdRate,
+            String currency, String provider, String providerOrderId, String approvalUrl) {
         this.bookingId = bookingId;
         this.userId = userId;
         this.travelId = travelId;
         this.managerId = managerId;
         this.travelTitle = travelTitle;
         this.amount = amount;
+        this.amountMad = amountMad;
+        this.madPerUsdRate = madPerUsdRate;
         this.currency = currency;
         this.provider = provider;
         this.providerOrderId = providerOrderId;
@@ -96,6 +104,14 @@ public class Payment {
 
     public BigDecimal getAmount() {
         return amount;
+    }
+
+    public BigDecimal getAmountMad() {
+        return amountMad == null ? amount : amountMad;
+    }
+
+    public BigDecimal getMadPerUsdRate() {
+        return madPerUsdRate;
     }
 
     public String getCurrency() {
@@ -129,4 +145,23 @@ public class Payment {
         status = PaymentStatus.COMPLETED;
         completedAt = Instant.now();
     }
+
+    public void updateCheckout(
+            BigDecimal amount,
+            BigDecimal amountMad,
+            BigDecimal madPerUsdRate,
+            String currency,
+            String providerOrderId,
+            String approvalUrl) {
+        if (status != PaymentStatus.CREATED) {
+            throw new IllegalStateException("Only a newly created payment can be updated");
+        }
+        this.amount = amount;
+        this.amountMad = amountMad;
+        this.madPerUsdRate = madPerUsdRate;
+        this.currency = currency;
+        this.providerOrderId = providerOrderId;
+        this.approvalUrl = approvalUrl;
+    }
+
 }

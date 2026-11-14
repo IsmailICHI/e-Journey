@@ -23,6 +23,7 @@ paypal:
   base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}
   client-id: ${PAYPAL_CLIENT_ID:}
   client-secret: ${PAYPAL_CLIENT_SECRET:}
+  mad-per-usd-rate: ${PAYPAL_MAD_PER_USD:10}
 
 stripe:
   base-url: ${STRIPE_BASE_URL:https://api.stripe.com}

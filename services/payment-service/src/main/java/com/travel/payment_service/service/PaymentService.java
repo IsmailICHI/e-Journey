@@ -1,6 +1,7 @@
 package com.travel.payment_service.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
@@ -12,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -32,27 +34,34 @@ public class PaymentService {
     private final BookingDetailsClient bookingDetailsClient;
     private final PayPalClient payPalClient;
     private final StripeClient stripeClient;
+    private final BigDecimal madPerUsdRate;
 
     public PaymentService(
             PaymentRepository paymentRepository,
             BookingDetailsClient bookingDetailsClient,
             PayPalClient payPalClient,
-            StripeClient stripeClient) {
+            StripeClient stripeClient,
+            @Value("${paypal.mad-per-usd-rate:10}") BigDecimal madPerUsdRate) {
+        if (madPerUsdRate.signum() <= 0) {
+            throw new IllegalArgumentException("PayPal MAD-per-USD rate must be greater than zero");
+        }
         this.paymentRepository = paymentRepository;
         this.bookingDetailsClient = bookingDetailsClient;
         this.payPalClient = payPalClient;
         this.stripeClient = stripeClient;
+        this.madPerUsdRate = madPerUsdRate;
     }
 
     @Transactional
-    public PaymentOrderResponse createOrder(Long userId, Long bookingId, String authorization) {
+    public PaymentOrderResponse createOrder(
+            Long userId, Long bookingId, String authorization, boolean restart) {
         BookingDetailsClient.BookingSnapshot booking = bookingDetailsClient.getBooking(bookingId, authorization);
         if (!booking.userId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This booking belongs to another traveler");
         }
         requirePendingBooking(booking);
         return paymentRepository.findByBookingId(bookingId)
-                .map(PaymentOrderResponse::from)
+                .map(payment -> restart ? restartOrder(booking, payment) : PaymentOrderResponse.from(payment))
                 .orElseGet(() -> createNewOrder(booking));
     }
 
@@ -60,12 +69,19 @@ public class PaymentService {
         String provider = normalizeProvider(booking.paymentMethod());
         Map<String, Object> order;
         String approvalUrl;
+        BigDecimal amountMad = booking.priceMad();
+        BigDecimal amount = amountMad;
+        BigDecimal appliedMadPerUsdRate = null;
+        String currency = "MAD";
         if ("PAYPAL".equals(provider)) {
-            order = payPalClient.createOrder(booking.id(), booking.priceMad(), "MAD");
+            amount = convertMadToUsd(amountMad);
+            appliedMadPerUsdRate = madPerUsdRate;
+            currency = "USD";
+            order = payPalClient.createOrder(booking.id(), amount, currency);
             approvalUrl = approvalUrl(order);
         } else {
             order = stripeClient.createCheckoutSession(
-                    booking.id(), booking.travelTitle(), booking.priceMad(), "MAD");
+                    booking.id(), booking.travelTitle(), amount, currency);
             approvalUrl = (String) order.get("url");
         }
         String orderId = (String) order.get("id");
@@ -75,15 +91,60 @@ public class PaymentService {
                 booking.travelId(),
                 booking.managerId(),
                 booking.travelTitle(),
-                booking.priceMad(),
-                "MAD",
+                amount,
+                amountMad,
+                appliedMadPerUsdRate,
+                currency,
                 provider,
                 orderId,
                 approvalUrl);
         return PaymentOrderResponse.from(paymentRepository.save(payment));
     }
 
-    @Transactional
+    private PaymentOrderResponse restartOrder(
+            BookingDetailsClient.BookingSnapshot booking, Payment payment) {
+        if (payment.getStatus() != PaymentStatus.CREATED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Only a pending payment checkout can be restarted.");
+        }
+
+        String provider = payment.getProvider();
+        BigDecimal amountMad = booking.priceMad();
+        BigDecimal amount = amountMad;
+        BigDecimal appliedMadPerUsdRate = null;
+        String currency = "MAD";
+        Map<String, Object> order;
+        String approvalUrl;
+        if ("PAYPAL".equals(provider)) {
+            amount = convertMadToUsd(amountMad);
+            appliedMadPerUsdRate = madPerUsdRate;
+            currency = "USD";
+            order = payPalClient.createOrder(booking.id(), amount, currency);
+            approvalUrl = approvalUrl(order);
+        } else {
+            order = stripeClient.createCheckoutSession(
+                    booking.id(), booking.travelTitle(), amount, currency);
+            approvalUrl = (String) order.get("url");
+        }
+        payment.updateCheckout(
+                amount,
+                amountMad,
+                appliedMadPerUsdRate,
+                currency,
+                (String) order.get("id"),
+                approvalUrl);
+        return PaymentOrderResponse.from(paymentRepository.save(payment));
+    }
+
+    private BigDecimal convertMadToUsd(BigDecimal amountMad) {
+        BigDecimal amountUsd = amountMad.divide(madPerUsdRate, 2, RoundingMode.HALF_UP);
+        if (amountUsd.signum() <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "The booking amount is too small to charge in USD");
+        }
+        return amountUsd;
+    }
+
     public PaymentOrderResponse capture(Long userId, Long paymentId, String authorization) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
@@ -95,6 +156,7 @@ public class PaymentService {
                     HttpStatus.BAD_REQUEST, "Use Stripe checkout verification for this payment");
         }
         if (payment.getStatus() == PaymentStatus.COMPLETED) {
+            confirmBookingIfNeeded(payment.getBookingId(), authorization);
             return PaymentOrderResponse.from(payment);
         }
 
@@ -105,12 +167,12 @@ public class PaymentService {
                     HttpStatus.BAD_GATEWAY,
                     "PayPal did not confirm the expected payment amount and currency");
         }
-        bookingDetailsClient.confirmPayment(payment.getBookingId(), authorization);
         payment.complete();
-        return PaymentOrderResponse.from(paymentRepository.save(payment));
+        Payment completedPayment = paymentRepository.saveAndFlush(payment);
+        confirmBookingIfNeeded(completedPayment.getBookingId(), authorization);
+        return PaymentOrderResponse.from(completedPayment);
     }
 
-    @Transactional
     public PaymentOrderResponse completeStripeSession(Long userId, String sessionId, String authorization) {
         Payment payment = paymentRepository.findByProviderOrderIdAndProvider(sessionId, "STRIPE")
                 .orElseThrow(() -> new ResponseStatusException(
@@ -119,6 +181,7 @@ public class PaymentService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This payment belongs to another traveler");
         }
         if (payment.getStatus() == PaymentStatus.COMPLETED) {
+            confirmBookingIfNeeded(payment.getBookingId(), authorization);
             return PaymentOrderResponse.from(payment);
         }
 
@@ -129,9 +192,20 @@ public class PaymentService {
                     HttpStatus.BAD_GATEWAY,
                     "Stripe did not confirm the expected paid checkout session");
         }
-        bookingDetailsClient.confirmPayment(payment.getBookingId(), authorization);
         payment.complete();
-        return PaymentOrderResponse.from(paymentRepository.save(payment));
+        Payment completedPayment = paymentRepository.saveAndFlush(payment);
+        confirmBookingIfNeeded(completedPayment.getBookingId(), authorization);
+        return PaymentOrderResponse.from(completedPayment);
+    }
+
+    private void confirmBookingIfNeeded(Long bookingId, String authorization) {
+        BookingDetailsClient.BookingSnapshot booking =
+                bookingDetailsClient.getBooking(bookingId, authorization);
+        if ("CONFIRMED".equals(booking.status())) {
+            return;
+        }
+        requirePendingBooking(booking);
+        bookingDetailsClient.confirmPayment(bookingId, authorization);
     }
 
     @Transactional(readOnly = true)
@@ -171,13 +245,13 @@ public class PaymentService {
             if (month.isAfter(currentMonth)) {
                 continue;
             }
-            total = total.add(payment.getAmount());
-            byMonth.computeIfAbsent(month, ignored -> new IncomeTotals()).add(payment.getAmount());
+            total = total.add(payment.getAmountMad());
+            byMonth.computeIfAbsent(month, ignored -> new IncomeTotals()).add(payment.getAmountMad());
             byTravel.computeIfAbsent(payment.getTravelId(), ignored -> new IncomeTotals(payment.getTravelTitle()))
-                    .add(payment.getAmount());
+                    .add(payment.getAmountMad());
             if (payment.getManagerId() != null) {
                 byManager.computeIfAbsent(payment.getManagerId(), ignored -> new IncomeTotals())
-                        .add(payment.getAmount());
+                        .add(payment.getAmountMad());
             }
         }
 
@@ -233,7 +307,8 @@ public class PaymentService {
         if (linksValue instanceof Iterable<?> links) {
             for (Object linkValue : links) {
                 if (linkValue instanceof Map<?, ?> link
-                        && Objects.equals(link.get("rel"), "approve")
+                        && (Objects.equals(link.get("rel"), "approve")
+                                || Objects.equals(link.get("rel"), "payer-action"))
                         && link.get("href") instanceof String href) {
                     return href;
                 }

@@ -39,8 +39,9 @@ public class StripeClient {
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("mode", "payment");
-        form.add("success_url", clientBaseUrl + "/traveler-dashboard?stripe_session_id={CHECKOUT_SESSION_ID}");
-        form.add("cancel_url", clientBaseUrl + "/traveler-dashboard?payment_cancelled=true");
+        form.add("success_url",
+                clientBaseUrl + "/payment/" + bookingId + "?stripe_session_id={CHECKOUT_SESSION_ID}");
+        form.add("cancel_url", clientBaseUrl + "/payment/" + bookingId + "?payment_cancelled=true");
         form.add("client_reference_id", bookingId.toString());
         form.add("line_items[0][price_data][currency]", currency.toLowerCase(java.util.Locale.ROOT));
         form.add("line_items[0][price_data][unit_amount]", Long.toString(amountMinor));

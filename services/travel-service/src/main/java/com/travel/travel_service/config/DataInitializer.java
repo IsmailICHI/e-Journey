@@ -6,8 +6,11 @@ import com.travel.travel_service.repository.TravelRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -21,9 +24,11 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         @Override
+        @Transactional
         public void run(String... args) {
 
                 if (travelRepository.count() > 0) {
+                        updateExistingSampleTravelDetails();
                         log.info("Travel database already contains data. Skipping initialization.");
                         return;
                 }
@@ -282,6 +287,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 .build()))
                                                 .build());
 
+                applySampleTravelDetails(travels);
                 travels.forEach(travel -> {
                                 if (travel.getItinerary() != null) {
                                                 travel.getItinerary().forEach(itinerary -> itinerary.setTravel(travel));
@@ -293,5 +299,85 @@ public class DataInitializer implements CommandLineRunner {
                 log.info(
                                 "Successfully initialized travel database with {} travel itineraries.",
                                 travels.size());
+        }
+
+        private void updateExistingSampleTravelDetails() {
+                List<String> sampleTitles = List.of(
+                                "Discover Paris",
+                                "Tokyo Experience",
+                                "New York City Adventure",
+                                "Dubai Discovery",
+                                "Marrakech Escape");
+                List<TravelEntity> samples = travelRepository.findAllByOrderByTravelIdAsc().stream()
+                                .filter(travel -> sampleTitles.contains(travel.getTitle())
+                                                && travel.getCreatedByUserId() == null)
+                                .toList();
+                if (!samples.isEmpty()) {
+                        applySampleTravelDetails(samples);
+                        travelRepository.saveAll(samples);
+                        log.info("Filled missing required fields for {} sample travels.", samples.size());
+                }
+        }
+
+        private void applySampleTravelDetails(List<TravelEntity> travels) {
+                List<String> accommodations = List.of(
+                                "Paris boutique hotel",
+                                "Shinjuku city hotel",
+                                "Manhattan hotel",
+                                "Downtown Dubai hotel",
+                                "Medina riad");
+                List<String> transportation = List.of(
+                                "Metro and walking",
+                                "Metro and rail",
+                                "Subway and walking",
+                                "Metro and private transfer",
+                                "Airport transfer and walking");
+                List<List<String>> destinations = List.of(
+                                List.of("Eiffel Tower", "Louvre", "Montmartre"),
+                                List.of("Shibuya", "Asakusa", "Akihabara"),
+                                List.of("Manhattan", "Central Park", "Brooklyn"),
+                                List.of("Downtown Dubai", "Old Dubai", "Desert"),
+                                List.of("Medina", "Majorelle Garden", "Bahia Palace"));
+                List<String> sampleTitles = List.of(
+                                "Discover Paris",
+                                "Tokyo Experience",
+                                "New York City Adventure",
+                                "Dubai Discovery",
+                                "Marrakech Escape");
+                List<BigDecimal> prices = List.of(
+                                new BigDecimal("4200.00"),
+                                new BigDecimal("6800.00"),
+                                new BigDecimal("7200.00"),
+                                new BigDecimal("3500.00"),
+                                new BigDecimal("2800.00"));
+
+                for (TravelEntity travel : travels) {
+                        int sampleIndex = sampleTitles.indexOf(travel.getTitle());
+                        if (sampleIndex < 0 || travel.getCreatedByUserId() != null) {
+                                continue;
+                        }
+                        if (travel.getAccommodation() == null || travel.getAccommodation().isBlank()) {
+                                travel.setAccommodation(accommodations.get(sampleIndex));
+                        }
+                        if (travel.getTransportation() == null || travel.getTransportation().isBlank()) {
+                                travel.setTransportation(transportation.get(sampleIndex));
+                        }
+                        if (travel.getPaymentMethod() == null || travel.getPaymentMethod().isBlank()) {
+                                travel.setPaymentMethod("PayPal");
+                        }
+                        if (travel.getPriceMad() == null) {
+                                travel.setPriceMad(prices.get(sampleIndex));
+                        }
+                        if (travel.getDestinations() == null || travel.getDestinations().isEmpty()) {
+                                travel.setDestinations(new ArrayList<>(destinations.get(sampleIndex)));
+                        }
+                        if (travel.getStartDate() == null) {
+                                travel.setStartDate(LocalDate.now().plusDays(30L + sampleIndex * 7L));
+                        }
+                        if (travel.getEndDate() == null && travel.getStartDate() != null) {
+                                travel.setEndDate(travel.getStartDate().plusDays(
+                                                Math.max(0, travel.getDuration() - 1)));
+                        }
+                }
         }
 }

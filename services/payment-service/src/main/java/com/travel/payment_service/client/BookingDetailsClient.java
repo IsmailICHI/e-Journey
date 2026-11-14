@@ -5,8 +5,11 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class BookingDetailsClient {
@@ -58,14 +61,21 @@ public class BookingDetailsClient {
             throw new IllegalStateException(
                     "Booking payment confirmation is not configured: BOOKING_PAYMENT_CONFIRMATION_SECRET is required");
         }
-        restClient.post()
-                .uri("/api/v1/bookings/payments/{id}/confirm", bookingId)
-                .headers(headers -> {
-                    headers.set("Authorization", authorization);
-                    headers.set("X-Payment-Service-Token", confirmationSecret);
-                })
-                .retrieve()
-                .toBodilessEntity();
+        try {
+            restClient.post()
+                    .uri("/api/v1/bookings/payments/{id}/confirm", bookingId)
+                    .headers(headers -> {
+                        headers.set("Authorization", authorization);
+                        headers.set("X-Payment-Service-Token", confirmationSecret);
+                    })
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "The payment provider confirmed your payment, but the booking service could not confirm the booking. Retry verification; the existing payment will not be charged again.",
+                    exception);
+        }
     }
 
     public record BookingSnapshot(

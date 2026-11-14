@@ -35,7 +35,8 @@ public class PaymentController {
     public PaymentOrderResponse createOrder(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreatePaymentRequest request) {
-        return paymentService.createOrder(userId(jwt), request.bookingId(), "Bearer " + jwt.getTokenValue());
+        return paymentService.createOrder(
+                userId(jwt), request.bookingId(), "Bearer " + jwt.getTokenValue(), request.restart());
     }
 
     @PostMapping("/payments/{id}/capture")
