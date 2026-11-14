@@ -88,10 +88,11 @@ public class TravelSearchService {
                                         "query", query,
                                         "type", "bool_prefix",
                                         "fields", List.of(
-                                                "title.suggest^4", "title.suggest._2gram", "title.suggest._3gram",
-                                                "city.suggest^3", "city.suggest._2gram",
-                                                "country.suggest^2", "country.suggest._2gram",
-                                                "destinations.suggest^2", "description.suggest")))))
+                                                "title^4", "title._2gram", "title._3gram",
+                                                "city^3", "city._2gram", "city._3gram",
+                                                "country^2", "country._2gram", "country._3gram",
+                                                "destinations^2", "destinations._2gram",
+                                                "description")))))
                 .retrieve()
                 .body(JSON_MAP);
         if (response == null
