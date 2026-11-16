@@ -128,6 +128,11 @@ class JwtAuthenticationFilterTest {
         public String extractRole(String token) {
             return role;
         }
+
+        @Override
+        public long extractTokenVersion(String token) {
+            return 0;
+        }
     }
 
     private static class StubTokenBlacklistService extends TokenBlacklistService {
@@ -138,7 +143,7 @@ class JwtAuthenticationFilterTest {
         }
 
         @Override
-        public Mono<Boolean> isBlacklisted(String token, String userId) {
+        public Mono<Boolean> isBlacklisted(String token, String userId, long tokenVersion) {
             return Mono.just(userBlacklisted);
         }
     }

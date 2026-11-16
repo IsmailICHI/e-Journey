@@ -42,6 +42,17 @@ public class JwtService {
         return userId != null ? userId.toString() : null;
     }
 
+    public long extractTokenVersion(String token) {
+        Object version = getClaims(token).get("tokenVersion");
+        if (version == null) {
+            return 0;
+        }
+        if (version instanceof Number number && number.longValue() >= 0) {
+            return number.longValue();
+        }
+        return -1;
+    }
+
     // Extracts email from Claims set by Auth Service
     public String extractEmail(String token) {
         return getClaims(token).getSubject();

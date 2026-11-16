@@ -58,7 +58,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return reject(exchange, HttpStatus.UNAUTHORIZED, "****** has no user identity");
         }
 
-        return tokenBlacklistService.isBlacklisted(token, revocationUserId)
+        long tokenVersion = jwtService.extractTokenVersion(token);
+        return tokenBlacklistService.isBlacklisted(token, revocationUserId, tokenVersion)
                 .materialize()
                 .flatMap(isBlacklisted -> {
                     if (isBlacklisted.isOnError()) {

@@ -3,6 +3,7 @@ import { HomeComponent } from './pages/home/home.component';
 import { adminGuard } from './core/guards/admin.guard';
 import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
+import { roleGuard } from './core/guards/role.guard';
 import { travelManagerGuard } from './core/guards/travel-manager.guard';
 import { travelerGuard } from './core/guards/traveler.guard';
 
@@ -33,7 +34,7 @@ export const routes: Routes = [
     },
     {
         path: 'traveler-dashboard',
-        canActivate: [travelerGuard],
+        canActivate: [roleGuard(['TRAVELER', 'TRAVEL_MANAGER'])],
         loadComponent: () => import('./pages/traveler-dashboard/traveler-dashboard.component').then((page) => page.TravelerDashboardComponent),
     },
     {

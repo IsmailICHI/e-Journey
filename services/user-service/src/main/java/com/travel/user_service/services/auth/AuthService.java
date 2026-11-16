@@ -8,6 +8,7 @@ import com.travel.user_service.exceptions.BadRequestException;
 import com.travel.user_service.models.Role;
 import com.travel.user_service.models.User;
 import com.travel.user_service.repository.UserRepository;
+import com.travel.user_service.services.UserTokenRevocationService;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -25,6 +26,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final UserTokenRevocationService tokenRevocationService;
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
@@ -63,7 +65,8 @@ public class AuthService {
             throw new BadRequestException("Account is deactivated. Please contact an administrator.");
         }
 
-        String token = jwtService.generateToken(user);
+        String token = jwtService.generateToken(
+                user, tokenRevocationService.currentTokenVersion(user.getId()));
         AuthResponse res = new AuthResponse();
         res.setToken(token);
         res.setState(user.getState());
