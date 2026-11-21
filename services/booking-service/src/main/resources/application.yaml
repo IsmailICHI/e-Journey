@@ -24,7 +24,7 @@ spring:
         spring.json.add.type.headers: false
 
 jwt:
-  secret: ${JWT_SECRET:defaultsecretkeydefaultsecretkeydefaultsecretkey}
+  secret: ${JWT_SECRET}
 
 app:
   booking:

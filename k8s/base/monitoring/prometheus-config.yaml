@@ -15,3 +15,5 @@ data:
               - 'gateway.travel-plan.svc.cluster.local:8090'  # Aligned with service port or unified management port
               - 'user-service.travel-plan.svc.cluster.local:8081'
               - 'travel-service.travel-plan.svc.cluster.local:8082'
+              - 'booking-service.travel-plan.svc.cluster.local:8085'
+              - 'payment-service.travel-plan.svc.cluster.local:8083'

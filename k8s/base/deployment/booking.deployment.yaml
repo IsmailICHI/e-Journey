@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-service
+  namespace: travel-plan
+  labels:
+    app.kubernetes.io/name: booking-service
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: booking-service
+  template:
+    metadata:
+      labels:
+        app: booking-service
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: booking-service
+          image: travelplan/booking-service:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8085
+          env:
+            - name: SERVER_PORT
+              value: "8085"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: booking-datasource-url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: postgres-user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: postgres-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: jwt-secret
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: kafka-bootstrap-servers
+            - name: BOOKING_EVENTS_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: booking-events-topic
+            - name: TRAVEL_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: travel-service-url
+            - name: BOOKING_PAYMENT_CONFIRMATION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: booking-payment-confirmation-secret
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 750m
+              memory: 512Mi

@@ -7,9 +7,10 @@
       - lookup('env', 'POSTGRES_PASSWORD') | length > 0
       - lookup('env', 'REDIS_PASSWORD') | length > 0
       - lookup('env', 'NEO4J_PASSWORD') | length > 0
+      - lookup('env', 'BOOKING_PAYMENT_CONFIRMATION_SECRET') | length > 0
       - ci_image_archive_dir is defined
       - deployment_source is defined
-    fail_msg: Jenkins must load .env and provide all application secrets and image archives.
+    fail_msg: Jenkins must load the managed .env credential with application secrets and provide image archives.
   no_log: false
 
 - name: Stage the tested Kubernetes manifests and images on the VM
@@ -40,8 +41,13 @@
         argv:
           - kubectl
           - apply
+          # Server-side apply: client-side apply would copy every secret value
+          # in plain text into the last-applied-configuration annotation.
+          - --server-side
+          - --force-conflicts
+          - --field-manager=travel-plan-deploy
           - --filename=-
-        stdin: "{{ {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'travel-plan-secrets', 'namespace': 'travel-plan'}, 'type': 'Opaque', 'stringData': {'jwt-secret': lookup('env', 'JWT_SECRET'), 'postgres-user': lookup('env', 'POSTGRES_USER'), 'postgres-password': lookup('env', 'POSTGRES_PASSWORD'), 'redis-password': lookup('env', 'REDIS_PASSWORD'), 'neo4j-password': lookup('env', 'NEO4J_PASSWORD')}} | to_json }}"
+        stdin: "{{ {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'travel-plan-secrets', 'namespace': 'travel-plan'}, 'type': 'Opaque', 'stringData': {'jwt-secret': lookup('env', 'JWT_SECRET'), 'postgres-user': lookup('env', 'POSTGRES_USER'), 'postgres-password': lookup('env', 'POSTGRES_PASSWORD'), 'redis-password': lookup('env', 'REDIS_PASSWORD'), 'neo4j-password': lookup('env', 'NEO4J_PASSWORD'), 'paypal-client-id': lookup('env', 'PAYPAL_CLIENT_ID'), 'paypal-client-secret': lookup('env', 'PAYPAL_CLIENT_SECRET'), 'stripe-secret-key': lookup('env', 'STRIPE_SECRET_KEY'), 'booking-payment-confirmation-secret': lookup('env', 'BOOKING_PAYMENT_CONFIRMATION_SECRET')}} | to_json }}"
         stdin_add_newline: true
       no_log: true
       changed_when: true
@@ -56,6 +62,8 @@
         - gateway
         - user-service
         - travel-service
+        - booking-service
+        - payment-service
 
     - name: Import tested images into k3s containerd
       ansible.builtin.command:
@@ -70,6 +78,8 @@
         - gateway
         - user-service
         - travel-service
+        - booking-service
+        - payment-service
       changed_when: true
 
     - name: Apply the tested development overlay
@@ -83,7 +93,7 @@
       #   - apply_to_k3s
       changed_when: true
 
-    - name: Wait for Neo4j and PostgreSQL
+    - name: Wait for stateful infrastructure
       ansible.builtin.command:
         argv:
           - kubectl
@@ -96,6 +106,8 @@
       loop:
         - neo4j
         - postgres
+        - kafka
+        - elasticsearch
       changed_when: false
 
     - name: Read existing PostgreSQL databases
@@ -136,6 +148,8 @@
       loop:
         - user_db
         - travel_db
+        - booking_db
+        - payment_db
       when: item not in postgres_databases.stdout_lines
       changed_when: true
 
@@ -154,6 +168,8 @@
         - gateway
         - user-service
         - travel-service
+        - booking-service
+        - payment-service
       changed_when: false
     # - name: Deploy Monitoring Stack (Prometheus & Grafana) to k3s
     #   ansible.builtin.command:
