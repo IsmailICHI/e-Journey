@@ -41,12 +41,12 @@ public class TravelService {
                 this.bookingGraphService = bookingGraphService;
         }
 
-        @Transactional(readOnly = true)
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
         public Optional<TravelResponse> getTravel(Long id) {
                 return travelRepository.findById(id).map(this::toResponse);
         }
 
-        @Transactional(readOnly = true)
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
         public List<TravelResponse> getAllTravels() {
 
                 return travelRepository.findAll()
@@ -55,7 +55,7 @@ public class TravelService {
                                 .toList();
         }
 
-        @Transactional(readOnly = true)
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
         public TravelPageResponse getTravelPage(int page, Long ownerId) {
                 Page<TravelEntity> travels = (ownerId == null
                                 ? travelRepository.findAllByOrderByTravelIdAsc(
@@ -75,14 +75,14 @@ public class TravelService {
                                 travels.isLast());
         }
 
-        @Transactional(readOnly = true)
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
         public List<TravelResponse> getAllTravelAnalytics() {
                 return travelRepository.findAllByOrderByTravelIdAsc().stream()
                                 .map(this::toResponse)
                                 .toList();
         }
 
-        @Transactional(readOnly = true)
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
         public List<TravelResponse> searchTravels(String query, int limit) {
                 if (!searchIndexInitialized) {
                         synchronized (this) {
@@ -98,7 +98,7 @@ public class TravelService {
                 return travelSearchService.search(query, limit);
         }
 
-        @Transactional(readOnly = true)
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
         public List<TravelResponse> getRecommendations(Long userId, int limit) {
                 if (!graphCatalogInitialized) {
                         synchronized (this) {
@@ -116,7 +116,7 @@ public class TravelService {
                                 .toList();
         }
 
-        @Transactional(readOnly = true)
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
         public List<TravelResponse> getManagerTravels(Long managerId) {
                 return travelRepository.findAllByOrderByTravelIdAsc().stream()
                                 .filter(travel -> managerId.equals(travel.getCreatedByUserId()))
@@ -154,7 +154,7 @@ public class TravelService {
                                 itinerary);
         }
 
-        @Transactional
+        @Transactional(transactionManager = "transactionManager")
         public TravelResponse createTravel(TravelRequest request, Long creatorId) {
                 TravelEntity travel = new TravelEntity();
                 applyRequest(travel, request);
@@ -165,7 +165,7 @@ public class TravelService {
                 return created;
         }
 
-        @Transactional
+        @Transactional(transactionManager = "transactionManager")
         public Optional<TravelResponse> updateTravel(Long id, TravelRequest request, Long actorId, boolean admin) {
                 return travelRepository.findById(id)
                         .filter(travel -> admin || actorId.equals(travel.getCreatedByUserId()))
@@ -178,7 +178,7 @@ public class TravelService {
                 });
         }
 
-        @Transactional
+        @Transactional(transactionManager = "transactionManager")
         public boolean deleteTravel(Long id, Long actorId, boolean admin) {
                 TravelEntity travel = travelRepository.findById(id).orElse(null);
                 if (travel == null || (!admin && !actorId.equals(travel.getCreatedByUserId()))) {

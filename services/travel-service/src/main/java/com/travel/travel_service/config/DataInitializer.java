@@ -24,7 +24,7 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         @Override
-        @Transactional
+        @Transactional(transactionManager = "transactionManager")
         public void run(String... args) {
 
                 if (travelRepository.count() > 0) {
