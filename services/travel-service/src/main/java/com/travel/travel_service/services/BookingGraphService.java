@@ -53,7 +53,7 @@ public class BookingGraphService {
               AND NOT EXISTS {
                   MATCH (traveler)-[:BOOKED]->(:Booking)-[:FOR_TRAVEL]->(candidate)
               }
-            WITH candidate, past, pastBooking,
+            WITH candidate, past,
                  (CASE WHEN candidate.city = past.city THEN 2 ELSE 0 END
                   + CASE WHEN candidate.country = past.country THEN 1 ELSE 0 END
                   + CASE WHEN candidate.duration = past.duration THEN 1 ELSE 0 END
