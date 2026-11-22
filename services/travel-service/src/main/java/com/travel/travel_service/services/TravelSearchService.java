@@ -95,11 +95,13 @@ public class TravelSearchService {
                                                 "description")))))
                 .retrieve()
                 .body(JSON_MAP);
+        
         if (response == null
                 || !(response.get("hits") instanceof Map<?, ?> hits)
                 || !(hits.get("hits") instanceof List<?> results)) {
             throw new IllegalStateException("Elasticsearch returned an invalid travel search response");
         }
+        
         List<TravelResponse> travels = new ArrayList<>();
         for (Object result : results) {
             if (result instanceof Map<?, ?> hit && hit.get("_source") != null) {
@@ -109,6 +111,7 @@ public class TravelSearchService {
         return travels;
     }
 
+    
     private Map<String, Object> textField() {
         return Map.of(
                 "type", "search_as_you_type");

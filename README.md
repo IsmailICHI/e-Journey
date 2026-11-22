@@ -14,10 +14,10 @@ Spring Cloud Gateway as the API entry point.
   Prometheus metrics endpoints.
 - Local Docker Compose and a single-node k3s development deployment.
 
-The payment and recommendation paths are configured in the gateway, but those
-services are not part of the active local Compose or Kubernetes application
-deployment. Payment is intentionally excluded from the current CI/CD pipeline
-and k3s manifests.
+The local Docker Compose stack includes booking, payment, Elasticsearch search,
+and Neo4j recommendation services. The current k3s deployment is narrower: it
+does not deploy booking, payment, Kafka, or Elasticsearch, so those flows are
+not available in that Kubernetes environment.
 
 ## Architecture
 
@@ -27,10 +27,13 @@ Angular client
      ▼
 Spring Cloud Gateway ───── Redis
      ├── User service ───── PostgreSQL (user_db)
-     └── Travel service ─── PostgreSQL (travel_db)
+     ├── Travel service ─── PostgreSQL (travel_db), Neo4j, Elasticsearch, Kafka
+     ├── Booking service ── PostgreSQL (booking_db), Kafka
+     └── Payment service ── PostgreSQL (payment_db), booking service
 
-Development infrastructure also provides Neo4j, Jenkins, SonarQube,
-and a single-node k3s cluster.
+Development infrastructure also provides Jenkins, SonarQube, and a single-node
+k3s cluster. The full search, booking, and payment flow is wired in Docker
+Compose, not in the current k3s deployment.
 ```
 
 The gateway runs on port `8089` and forwards API requests to the user and
@@ -44,8 +47,9 @@ development, Traefik exposes the frontend and gateway through port `8088`.
 | `services/client/` | Angular client |
 | `services/user-service/` | Registration, authentication, profiles, and admin user operations |
 | `services/travel-service/` | Public travel listings and admin travel operations |
+| `services/booking-service/` | Subscriptions, cancellation, feedback, reports, and booking history |
 | `services/gateway/` | API routing, JWT security, CORS, and Redis rate limiting |
-| `services/payment-service/` | Additional service code; not included in the active deployment |
+| `services/payment-service/` | PayPal and Stripe payment flows; included in Docker Compose |
 | `db/` | PostgreSQL initialization scripts |
 | `infrastructure/ansible/` | Provisioning and deployment automation for the development VM |
 | `infrastructure/ci-platform/` | Jenkins, SonarQube, and their database Compose configuration |
@@ -78,7 +82,10 @@ Copy-Item .env.example .env
 
 Replace the example credentials with local values. In particular, set a unique
 `JWT_SECRET` of at least 32 bytes and strong PostgreSQL and Redis passwords.
-Keep `.env` private; it is ignored by Git. Compose requires `JWT_SECRET` when
+If you want the user service to create its first administrator, also set
+`BOOTSTRAP_ADMIN_EMAIL` and a unique `BOOTSTRAP_ADMIN_PASSWORD` of at least 12
+characters. Without both values, no initial administrator is created. Keep
+`.env` private; it is ignored by Git. Compose requires `JWT_SECRET` when
 starting the application services.
 
 The database container creates `user_db` and `travel_db` on first
@@ -115,6 +122,8 @@ $env:REDIS_HOST = "127.0.0.1"
 $env:REDIS_PORT = "6379"
 $env:REDIS_PASSWORD = "<REDIS_PASSWORD>"
 $env:JWT_SECRET = "<JWT_SECRET>"
+$env:BOOTSTRAP_ADMIN_EMAIL = "<ADMIN_EMAIL>"
+$env:BOOTSTRAP_ADMIN_PASSWORD = "<UNIQUE_PASSWORD_AT_LEAST_12_CHARACTERS>"
 mvn -f services/user-service/pom.xml spring-boot:run
 ```
 
@@ -154,16 +163,13 @@ Open [http://127.0.0.1:4200](http://127.0.0.1:4200). The main routes include
 `/home`, `/login`, `/register`, `/profile`, and `/admin`. The administration
 route requires an administrator account.
 
-For local development, the user service creates an initial administrator if
-one does not already exist:
-
-```text
-Email:    admin@admin.com
-Password: Admin123456@@
-```
-
-This is a development-only account. Change or remove its credentials before
-using any non-local environment.
+For local development, the user service creates an initial administrator only
+when both bootstrap variables are configured in `.env` and that email does not
+already exist. The password is stored as a BCrypt hash; keep the bootstrap
+credentials private and do not reuse them outside the local environment. An
+existing database may still contain an administrator created by an older
+version; rotate or remove that account explicitly because the update does not
+change existing user credentials.
 
 ### Run the full application stack in containers
 
@@ -236,7 +242,9 @@ ANSIBLE_CONFIG=infrastructure/ansible/ansible.cfg ansible-playbook infrastructur
 ```
 
 On the workstation, Jenkins is available at `http://127.0.0.1:8080`,
-SonarQube at `http://127.0.0.1:9000`, and the app at `http://localhost:8088`.
+SonarQube at `http://127.0.0.1:9000`, and the k3s app at
+`https://travel-plan.local:8443` after running the HTTPS setup described in
+the [Kubernetes guide](./k8s/README.md).
 The manual development deployment is also available through
 `infrastructure/ansible/playbooks/deploy-app.yml`.
 

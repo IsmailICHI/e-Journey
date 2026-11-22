@@ -58,9 +58,9 @@ public class BookingGraphService {
                   + CASE WHEN candidate.country = past.country THEN 1 ELSE 0 END
                   + CASE WHEN candidate.duration = past.duration THEN 1 ELSE 0 END
                   + CASE WHEN candidate.paymentMethod = past.paymentMethod THEN 1 ELSE 0 END)
-                  * coalesce(pastBooking.rating, 3) / 5.0 AS score
+                  AS score
             WITH candidate, sum(score) AS score
-            WHERE score > 0
+            WHERE score >= 2
             RETURN candidate.travelId AS travelId
             ORDER BY score DESC, candidate.travelId ASC
             LIMIT $limit

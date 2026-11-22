@@ -1,6 +1,6 @@
 # Kubernetes deployment for Travel-Plan
 
-This directory contains a small but production-minded k3s deployment for the application that already exists in this repository. The active deployment intentionally includes the Angular frontend, the API gateway, the user service, and the travel service. The payment service remains excluded from the live k8s manifests and from the CI/CD pipeline in this iteration.
+This directory contains a single-node k3s development deployment for the Angular frontend, API gateway, user service, and travel service. It does not deploy the booking or payment services, Kafka, or Elasticsearch; booking, payment, search, and event-driven recommendations are therefore not fully available in this Kubernetes environment. The full implementations are wired in the local Docker Compose stack.
 
 ## Architecture
 
@@ -50,7 +50,7 @@ The repository's development cluster runs in the VirtualBox VM from the root `Va
 
 ## Create the required secrets
 
-For this learning setup, Ansible applies the development Secret automatically. The file uses dummy credentials and must not be used in a production environment. For another cluster, create a Secret with suitable credentials rather than applying the example placeholders:
+For this learning setup, Ansible applies the development Secret automatically. The file uses dummy credentials and must not be used in a production environment. To create an initial admin, set `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` in the CI deployment environment, or add both `bootstrap-admin-email` and `bootstrap-admin-password` keys to the Secret used by the manual playbook. Without both, automatic admin provisioning is disabled. For another cluster, create a Secret with suitable credentials rather than applying the example placeholders:
 
 ```bash
 cp k8s/base/secrets.example.yaml /tmp/travel-plan-secrets.yaml
@@ -66,7 +66,7 @@ The example manifest intentionally uses obvious placeholders and must never be u
 ansible-playbook -i infrastructure/ansible/inventories/dev/hosts.yml infrastructure/ansible/playbooks/deploy-app.yml
 ```
 
-The Ansible playbook builds and imports the development images in the VM, then applies this overlay. The dev ingress uses `localhost` so no workstation hosts-file edit is required.
+The Ansible playbook builds and imports the development images in the VM, then applies this overlay. The dev ingress uses `travel-plan.local` and TLS; use `scripts/https.sh` to prepare a trusted local certificate and map that host to `127.0.0.1`.
 
 ## Validate the manifest set
 
@@ -117,11 +117,11 @@ sudo k3s kubectl -n travel-plan describe ingress travel-plan
 
 ## Local Access
 
-The Vagrantfile forwards the VM's HTTP ingress to `http://localhost:8088`. The frontend is served from the same host and the browser calls `/api/...`, which Traefik forwards to the gateway service.
+The Vagrantfile forwards HTTP port 80 to `localhost:8088` and HTTPS port 443 to `localhost:8443`. The active ingress uses HTTPS, so open `https://travel-plan.local:8443`; the browser calls `/api/...`, which Traefik forwards to the gateway service.
 
 ## TLS and production notes
 
-The base ingress is intentionally HTTP-only for local k3s development. For HTTPS, create a secret such as `travel-plan-local-tls` and include the `tls:` section in the ingress manifest; then point the host at a DNS name that resolves to the cluster. Do not commit private keys to the repository.
+The ingress already declares the `travel-plan-local-tls` Secret, and Ansible provisions it from the certificate files created by `scripts/https.sh`. This is a local development certificate, not a production certificate. Use a valid certificate and managed secret for production, and never commit private keys.
 
 ## Safe cleanup
 
@@ -138,5 +138,5 @@ This removes the application resources while leaving the persistent database vol
 - This is a single-node development deployment, not a multi-node HA control plane.
 - Local-path storage is convenient for a dev cluster but is not a substitute for enterprise storage.
 - The HPA only scales application replicas; it does not scale the worker nodes themselves.
-- Payment is intentionally excluded and should be added as a separate deployment when the service is ready for inclusion.
+- Booking, payment, Kafka, and Elasticsearch are not deployed in this k3s setup; deploy those services before using the corresponding product flows here.
 - The older scripts under `k3s/` are not used by this Travel-Plan deployment; they refer to a different billing/inventory application layout.
