@@ -151,6 +151,7 @@ public class Payment {
             BigDecimal amountMad,
             BigDecimal madPerUsdRate,
             String currency,
+            String provider,
             String providerOrderId,
             String approvalUrl) {
         if (status != PaymentStatus.CREATED) {
@@ -160,6 +161,7 @@ public class Payment {
         this.amountMad = amountMad;
         this.madPerUsdRate = madPerUsdRate;
         this.currency = currency;
+        this.provider = provider;
         this.providerOrderId = providerOrderId;
         this.approvalUrl = approvalUrl;
     }

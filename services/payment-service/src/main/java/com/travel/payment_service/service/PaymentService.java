@@ -54,19 +54,27 @@ public class PaymentService {
 
     @Transactional
     public PaymentOrderResponse createOrder(
-            Long userId, Long bookingId, String authorization, boolean restart) {
+            Long userId, Long bookingId, String authorization, String requestedProvider, boolean restart) {
         BookingDetailsClient.BookingSnapshot booking = bookingDetailsClient.getBooking(bookingId, authorization);
         if (!booking.userId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This booking belongs to another traveler");
         }
         requirePendingBooking(booking);
-        return paymentRepository.findByBookingId(bookingId)
-                .map(payment -> restart ? restartOrder(booking, payment) : PaymentOrderResponse.from(payment))
-                .orElseGet(() -> createNewOrder(booking));
+        String provider = requestedProvider == null ? null : normalizeProvider(requestedProvider);
+        var existingPayment = paymentRepository.findByBookingId(bookingId);
+        if (existingPayment.isPresent()) {
+            Payment payment = existingPayment.get();
+            String selectedProvider = provider == null ? payment.getProvider() : provider;
+            if (restart || !selectedProvider.equals(payment.getProvider())) {
+                return restartOrder(booking, payment, selectedProvider);
+            }
+            return PaymentOrderResponse.from(payment);
+        }
+        return createNewOrder(booking, provider == null ? normalizeProvider(booking.paymentMethod()) : provider);
     }
 
-    private PaymentOrderResponse createNewOrder(BookingDetailsClient.BookingSnapshot booking) {
-        String provider = normalizeProvider(booking.paymentMethod());
+    private PaymentOrderResponse createNewOrder(
+            BookingDetailsClient.BookingSnapshot booking, String provider) {
         Map<String, Object> order;
         String approvalUrl;
         BigDecimal amountMad = booking.priceMad();
@@ -102,13 +110,15 @@ public class PaymentService {
     }
 
     private PaymentOrderResponse restartOrder(
-            BookingDetailsClient.BookingSnapshot booking, Payment payment) {
+            BookingDetailsClient.BookingSnapshot booking, Payment payment, String provider) {
         if (payment.getStatus() != PaymentStatus.CREATED) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Only a pending payment checkout can be restarted.");
+                    HttpStatus.CONFLICT, "Only a pending payment checkout can be changed or restarted.");
+        }
+        if ("STRIPE".equals(payment.getProvider())) {
+            stripeClient.expireOpenCheckoutSession(payment.getProviderOrderId());
         }
 
-        String provider = payment.getProvider();
         BigDecimal amountMad = booking.priceMad();
         BigDecimal amount = amountMad;
         BigDecimal appliedMadPerUsdRate = null;
@@ -131,6 +141,7 @@ public class PaymentService {
                 amountMad,
                 appliedMadPerUsdRate,
                 currency,
+                provider,
                 (String) order.get("id"),
                 approvalUrl);
         return PaymentOrderResponse.from(paymentRepository.save(payment));

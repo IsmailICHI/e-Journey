@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PaymentAnalyticsResponse } from '../models/booking.model';
 
+export type PaymentProvider = 'PAYPAL' | 'STRIPE';
+
 export interface PaymentOrderResponse {
   paymentId: number;
   bookingId: number;
@@ -14,7 +16,7 @@ export interface PaymentOrderResponse {
   madPerUsdRate: number | null;
   currency: string;
   providerOrderId: string | null;
-  provider: 'PAYPAL' | 'STRIPE';
+  provider: PaymentProvider;
   status: string;
   approvalUrl: string;
 }
@@ -24,8 +26,16 @@ export class PaymentService {
   private readonly http = inject(HttpClient);
   private readonly paymentsUrl = `${environment.apiUrl}/api/v1/payments`;
 
-  createOrder(bookingId: number, restart = false): Observable<PaymentOrderResponse> {
-    return this.http.post<PaymentOrderResponse>(`${this.paymentsUrl}/orders`, { bookingId, restart });
+  createOrder(
+    bookingId: number,
+    provider: PaymentProvider | null = null,
+    restart = false
+  ): Observable<PaymentOrderResponse> {
+    return this.http.post<PaymentOrderResponse>(`${this.paymentsUrl}/orders`, {
+      bookingId,
+      provider,
+      restart
+    });
   }
 
   capture(paymentId: number): Observable<PaymentOrderResponse> {

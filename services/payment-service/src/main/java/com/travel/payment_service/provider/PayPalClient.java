@@ -46,7 +46,8 @@ public class PayPalClient {
                 "amount", amountDetails);
         Map<String, Object> experienceContext = Map.of(
                 "return_url", clientBaseUrl + "/payment/" + bookingId + "?paypal_return=true",
-                "cancel_url", clientBaseUrl + "/payment/" + bookingId + "?payment_cancelled=true",
+                "cancel_url", clientBaseUrl + "/payment/" + bookingId
+                        + "?payment_cancelled=true&payment_provider=PAYPAL",
                 "landing_page", "LOGIN",
                 "user_action", "PAY_NOW",
                 "shipping_preference", "NO_SHIPPING");

@@ -58,9 +58,21 @@
 
           <div *ngIf="currentBooking.status === 'PENDING_PAYMENT'">
             <p class="text-[10px] font-semibold tracking-[0.2em] text-[#8b6c38]">PAYMENT METHOD</p>
-            <h2 class="mt-2 text-2xl font-light text-stone-900">{{ order?.provider || currentBooking.paymentMethod || 'Payment' }}</h2>
+            <h2 class="mt-2 text-2xl font-light text-stone-900">{{ selectedProvider }}</h2>
+            <div class="mt-5 grid grid-cols-2 gap-3" role="group" aria-label="Choose a payment provider">
+              <button type="button" (click)="selectProvider('PAYPAL')" [attr.aria-pressed]="selectedProvider === 'PAYPAL'"
+                class="min-h-12 border px-4 text-xs font-semibold tracking-[0.1em] transition"
+                [ngClass]="selectedProvider === 'PAYPAL' ? 'border-[#8b6c38] bg-[#f7f1e5] text-stone-900' : 'border-stone-300 text-stone-500 hover:border-stone-500'">
+                PayPal
+              </button>
+              <button type="button" (click)="selectProvider('STRIPE')" [attr.aria-pressed]="selectedProvider === 'STRIPE'"
+                class="min-h-12 border px-4 text-xs font-semibold tracking-[0.1em] transition"
+                [ngClass]="selectedProvider === 'STRIPE' ? 'border-[#8b6c38] bg-[#f7f1e5] text-stone-900' : 'border-stone-300 text-stone-500 hover:border-stone-500'">
+                Stripe
+              </button>
+            </div>
             <p class="mt-3 text-sm leading-6 text-stone-500">
-              <ng-container *ngIf="order?.provider === 'PAYPAL'; else stripeInfo">
+              <ng-container *ngIf="selectedProvider === 'PAYPAL'; else stripeInfo">
                 Your booking price in MAD is converted at the configured fixed rate. Approve the USD total with PayPal; you’ll return here automatically while we confirm payment.
               </ng-container>
               <ng-template #stripeInfo>
@@ -71,20 +83,21 @@
             <div *ngIf="preparingOrder" class="mt-7 border border-stone-200 bg-stone-50 px-4 py-4 text-sm text-stone-500">
               Preparing secure checkout…
             </div>
-            <button *ngIf="!order && !preparingOrder && !errorMessage" type="button" (click)="preparePayment()"
+            <button *ngIf="!preparingOrder && (!order || order.provider !== selectedProvider)" type="button"
+              (click)="preparePayment(false, selectedProvider)"
               class="mt-7 min-h-12 w-full bg-[#171714] px-5 text-[10px] font-semibold tracking-[0.14em] text-white hover:bg-[#8b6c38]">
-              PREPARE CHECKOUT
+              {{ order ? 'SWITCH TO ' + selectedProvider : 'PREPARE ' + selectedProvider + ' CHECKOUT' }}
             </button>
-            <a *ngIf="order?.approvalUrl" [href]="order?.approvalUrl"
+            <a *ngIf="order && order.approvalUrl && order.provider === selectedProvider" [href]="order.approvalUrl"
               class="mt-7 flex min-h-12 w-full items-center justify-center bg-[#c5a059] px-5 text-center text-[10px] font-bold tracking-[0.12em] text-[#171714] hover:bg-[#d9bc76]">
-              CONTINUE TO {{ order?.provider }}
+              CONTINUE TO {{ order.provider }}
             </a>
             <button *ngIf="order?.provider === 'PAYPAL' && paypalApprovalReturned" type="button" (click)="capturePayPalPayment()"
               [disabled]="capturingPayment"
               class="mt-3 min-h-12 w-full border border-stone-300 px-5 text-[10px] font-semibold tracking-[0.12em] text-stone-700 hover:border-stone-500 disabled:opacity-50">
               {{ capturingPayment ? 'VERIFYING WITH PAYPAL…' : 'RETRY PAYMENT VERIFICATION' }}
             </button>
-            <button *ngIf="order?.provider === 'PAYPAL' && canRestartPayPalCheckout && !capturingPayment" type="button"
+            <button *ngIf="order?.provider === 'PAYPAL' && selectedProvider === 'PAYPAL' && canRestartPayPalCheckout && !capturingPayment" type="button"
               (click)="restartPayPalCheckout()"
               class="mt-3 min-h-12 w-full border border-stone-300 px-5 text-[10px] font-semibold tracking-[0.12em] text-stone-700 hover:border-stone-500">
               RESTART PAYPAL CHECKOUT

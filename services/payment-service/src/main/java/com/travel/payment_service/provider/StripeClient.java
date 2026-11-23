@@ -6,11 +6,13 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class StripeClient {
@@ -41,7 +43,8 @@ public class StripeClient {
         form.add("mode", "payment");
         form.add("success_url",
                 clientBaseUrl + "/payment/" + bookingId + "?stripe_session_id={CHECKOUT_SESSION_ID}");
-        form.add("cancel_url", clientBaseUrl + "/payment/" + bookingId + "?payment_cancelled=true");
+        form.add("cancel_url", clientBaseUrl + "/payment/" + bookingId
+                + "?payment_cancelled=true&payment_provider=STRIPE");
         form.add("client_reference_id", bookingId.toString());
         form.add("line_items[0][price_data][currency]", currency.toLowerCase(java.util.Locale.ROOT));
         form.add("line_items[0][price_data][unit_amount]", Long.toString(amountMinor));
@@ -75,9 +78,34 @@ public class StripeClient {
         return session;
     }
 
+    public void expireOpenCheckoutSession(String sessionId) {
+        Map<String, Object> currentSession = getCheckoutSession(sessionId);
+        String status = String.valueOf(currentSession.get("status"));
+        if ("expired".equals(status)) {
+            return;
+        }
+        if (!"open".equals(status)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "This Stripe checkout is no longer open, so its payment method cannot be changed.");
+        }
+
+        Map<String, Object> expiredSession = restClient.post()
+                .uri("/v1/checkout/sessions/{sessionId}/expire", sessionId)
+                .headers(headers -> headers.setBearerAuth(secretKey))
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(new LinkedMultiValueMap<String, String>())
+                .retrieve()
+                .body(JSON_MAP);
+        if (expiredSession == null || !"expired".equals(expiredSession.get("status"))) {
+            throw new IllegalStateException("Stripe did not confirm that the checkout session expired");
+        }
+    }
+
     private void requireSecretKey() {
         if (secretKey.isBlank()) {
-            throw new IllegalStateException("Stripe is not configured: STRIPE_SECRET_KEY is required");
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE, "Stripe is not configured: STRIPE_SECRET_KEY is required");
         }
     }
 }

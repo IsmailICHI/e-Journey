@@ -6,7 +6,7 @@ import { NavbarComponent } from '../../shared/navbar/navbar.component';
 import { getApiErrorMessage } from '../../core/interceptors/api-error';
 import { BookingResponse } from '../../core/models/booking.model';
 import { BookingService } from '../../core/services/booking.service';
-import { PaymentOrderResponse, PaymentService } from '../../core/services/payment.service';
+import { PaymentOrderResponse, PaymentProvider, PaymentService } from '../../core/services/payment.service';
 
 @Component({
   selector: 'app-payment',
@@ -27,6 +27,7 @@ export class PaymentComponent implements OnInit {
   capturingPayment = false;
   paypalApprovalReturned = false;
   canRestartPayPalCheckout = false;
+  selectedProvider: PaymentProvider = 'PAYPAL';
   errorMessage = '';
   statusMessage = '';
 
@@ -41,9 +42,16 @@ export class PaymentComponent implements OnInit {
     const sessionId = this.route.snapshot.queryParamMap.get('stripe_session_id');
     const paypalOrderId = this.route.snapshot.queryParamMap.get('token');
     const paymentCancelled = this.route.snapshot.queryParamMap.get('payment_cancelled') === 'true';
+    const returnedProvider = this.route.snapshot.queryParamMap.get('payment_provider');
+    if (returnedProvider === 'PAYPAL' || returnedProvider === 'STRIPE') {
+      this.selectedProvider = returnedProvider;
+    }
     this.bookingService.getBooking(bookingId).subscribe({
       next: (booking) => {
         this.booking = booking;
+        if (!returnedProvider) {
+          this.selectedProvider = booking.paymentMethod?.toUpperCase() === 'STRIPE' ? 'STRIPE' : 'PAYPAL';
+        }
         this.loading = false;
         if (sessionId) {
           this.completeStripePayment(sessionId);
@@ -54,7 +62,7 @@ export class PaymentComponent implements OnInit {
           if (paymentCancelled) {
             this.statusMessage = 'Checkout was cancelled. Preparing a fresh checkout…';
           }
-          this.preparePayment(paymentCancelled);
+          this.preparePayment(paymentCancelled, null);
         }
       },
       error: (error: unknown) => {
@@ -64,14 +72,19 @@ export class PaymentComponent implements OnInit {
     });
   }
 
-  preparePayment(restart = false): void {
+  preparePayment(
+    restart = false,
+    provider: PaymentProvider | null = this.selectedProvider
+  ): void {
     if (!this.booking || this.booking.status !== 'PENDING_PAYMENT' || this.preparingOrder) {
       return;
     }
+    this.errorMessage = '';
     this.preparingOrder = true;
-    this.paymentService.createOrder(this.booking.id, restart).subscribe({
+    this.paymentService.createOrder(this.booking.id, provider, restart).subscribe({
       next: (order) => {
         this.order = order;
+        this.selectedProvider = order.provider;
         this.preparingOrder = false;
         this.errorMessage = '';
         if (order.provider === 'PAYPAL' && order.status === 'COMPLETED') {
@@ -80,7 +93,7 @@ export class PaymentComponent implements OnInit {
         }
         if (restart) {
           this.clearPaymentQueryParams();
-          this.statusMessage = 'A new checkout is ready. Continue to PayPal to approve it.';
+          this.statusMessage = `A new checkout is ready. Continue to ${order.provider} to complete payment.`;
         }
       },
       error: (error: unknown) => {
@@ -88,6 +101,11 @@ export class PaymentComponent implements OnInit {
         this.preparingOrder = false;
       }
     });
+  }
+
+  selectProvider(provider: PaymentProvider): void {
+    this.selectedProvider = provider;
+    this.errorMessage = '';
   }
 
   restartPayPalCheckout(): void {
@@ -98,7 +116,7 @@ export class PaymentComponent implements OnInit {
     this.statusMessage = '';
     this.paypalApprovalReturned = false;
     this.canRestartPayPalCheckout = false;
-    this.preparePayment(true);
+    this.preparePayment(true, 'PAYPAL');
   }
 
   capturePayPalPayment(): void {
@@ -130,7 +148,7 @@ export class PaymentComponent implements OnInit {
     if (!this.booking) {
       return;
     }
-    this.paymentService.createOrder(this.booking.id).subscribe({
+    this.paymentService.createOrder(this.booking.id, null).subscribe({
       next: (order) => {
         this.order = order;
         if (order.provider !== 'PAYPAL' || order.providerOrderId !== paypalOrderId) {
@@ -183,7 +201,8 @@ export class PaymentComponent implements OnInit {
         paypal_return: null,
         token: null,
         PayerID: null,
-        payment_cancelled: null
+        payment_cancelled: null,
+        payment_provider: null
       },
       queryParamsHandling: 'merge',
       replaceUrl: true

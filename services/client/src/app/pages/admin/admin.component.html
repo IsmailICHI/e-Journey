@@ -251,8 +251,9 @@
               <option value="" disabled style="background-color: #121212; color: #6b7280;">Select a payment provider
               </option>
               <option value="PayPal" style="background-color: #121212; color: #d1d5db;">PayPal</option>
+              <option value="Stripe" style="background-color: #121212; color: #d1d5db;">Stripe</option>
             </select>
-            <span class="mt-1 block text-[10px] leading-4 text-stone-500">Traveler bookings use PayPal checkout.</span>
+            <span class="mt-1 block text-[10px] leading-4 text-stone-500">Traveler bookings use the selected provider: PayPal or Stripe.</span>
           </label>
           <label class="text-xs text-stone-300 sm:col-span-2">Description
             <textarea name="description" [(ngModel)]="travelForm.description" rows="3" class="admin-input"></textarea>
