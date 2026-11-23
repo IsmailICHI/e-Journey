@@ -7,6 +7,7 @@ import com.travel.travel_service.repository.TravelRepository;
 import com.travel.travel_service.services.TravelService;
 import com.travel.travel_service.services.TravelSearchService;
 import com.travel.travel_service.services.BookingGraphService;
+import org.springframework.data.neo4j.core.transaction.Neo4jTransactionManager;
 import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,6 +46,9 @@ class TravelServiceApplicationTests {
 	@Autowired
 	private TravelRepository travelRepository;
 
+	@Autowired
+	private Neo4jTransactionManager neo4jTransactionManager;
+
 	@MockBean
 	private TravelSearchService travelSearchService;
 
@@ -67,6 +71,11 @@ class TravelServiceApplicationTests {
 		String json = objectMapper.writeValueAsString(travel);
 
 		assertThat(json).contains("Eiffel Tower");
+	}
+
+	@Test
+	void configuresDedicatedNeo4jTransactionManager() {
+		assertThat(neo4jTransactionManager).isNotNull();
 	}
 
 	@Test

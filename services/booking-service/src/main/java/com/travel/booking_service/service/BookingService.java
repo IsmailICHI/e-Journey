@@ -75,10 +75,16 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<BookingResponse> getBookingsForUser(Long userId) {
+    public java.util.List<BookingResponse> getBookingsForUser(Long userId, String authorization) {
         return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(BookingResponse::from)
+                .map(booking -> booking.getStatus() == BookingStatus.CONFIRMED
+                        ? BookingResponse.from(booking, getCurrentDepartureDate(booking, authorization))
+                        : BookingResponse.from(booking))
                 .toList();
+    }
+
+    public LocalDate getCurrentDepartureDate(Booking booking, String authorization) {
+        return travelDetailsClient.getTravel(booking.getTravelId(), authorization).departureDate();
     }
 
     @Transactional(readOnly = true)

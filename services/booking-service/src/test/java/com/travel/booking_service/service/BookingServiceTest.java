@@ -15,7 +15,10 @@ import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.travel.booking_service.client.TravelDetailsClient;
+import com.travel.booking_service.dto.BookingResponse;
 import com.travel.booking_service.dto.CreateBookingRequest;
+import com.travel.booking_service.model.Booking;
+import com.travel.booking_service.model.BookingStatus;
 import com.travel.booking_service.repository.BookingEventOutboxRepository;
 import com.travel.booking_service.repository.BookingRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,6 +85,21 @@ class BookingServiceTest {
         assertNotNull(bookingService.createBooking(2L, new CreateBookingRequest(1L), AUTHORIZATION));
 
         verify(bookingRepository).save(any());
+    }
+
+    @Test
+    void showsCurrentDepartureDateForConfirmedBookings() {
+        Booking booking = new Booking();
+        booking.setTravelId(1L);
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setDepartureDate(LocalDate.now(ZoneOffset.UTC).plusDays(7));
+        LocalDate currentDepartureDate = LocalDate.now(ZoneOffset.UTC).minusDays(3);
+        when(bookingRepository.findByUserIdOrderByCreatedAtDesc(2L)).thenReturn(List.of(booking));
+        when(travelDetailsClient.getTravel(1L, AUTHORIZATION)).thenReturn(travel(currentDepartureDate));
+
+        List<BookingResponse> bookings = bookingService.getBookingsForUser(2L, AUTHORIZATION);
+
+        assertEquals(currentDepartureDate, bookings.get(0).departureDate());
     }
 
     private TravelDetailsClient.TravelSnapshot travel(LocalDate departureDate) {

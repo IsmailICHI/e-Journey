@@ -59,7 +59,7 @@ public class BookingController {
 
     @GetMapping("/me")
     public java.util.List<BookingResponse> myBookings(@AuthenticationPrincipal Jwt jwt) {
-        return bookingService.getBookingsForUser(userId(jwt));
+        return bookingService.getBookingsForUser(userId(jwt), "Bearer " + jwt.getTokenValue());
     }
 
     @GetMapping("/me/statistics")
@@ -154,7 +154,7 @@ public class BookingController {
     public FeedbackResponse submitFeedback(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateFeedbackRequest request) {
-        return feedbackService.submitFeedback(userId(jwt), request);
+        return feedbackService.submitFeedback(userId(jwt), request, "Bearer " + jwt.getTokenValue());
     }
 
     @GetMapping("/admin/feedback")

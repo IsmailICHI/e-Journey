@@ -37,14 +37,14 @@ public class TravelerFeedbackService {
     }
 
     @Transactional
-    public FeedbackResponse submitFeedback(Long userId, CreateFeedbackRequest request) {
+    public FeedbackResponse submitFeedback(Long userId, CreateFeedbackRequest request, String authorization) {
         Booking booking = bookingService.getOwnedBooking(request.bookingId(), userId);
         if (booking.getStatus() != BookingStatus.CONFIRMED) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Feedback can only be submitted for confirmed bookings");
         }
-        if (booking.getDepartureDate() == null
-                || !booking.getDepartureDate().isBefore(LocalDate.now(ZoneOffset.UTC))) {
+        LocalDate departureDate = bookingService.getCurrentDepartureDate(booking, authorization);
+        if (departureDate == null || !departureDate.isBefore(LocalDate.now(ZoneOffset.UTC))) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Feedback can only be submitted after the journey has taken place");
         }

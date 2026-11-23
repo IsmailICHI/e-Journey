@@ -20,13 +20,17 @@ public record BookingResponse(
         Instant createdAt) {
 
     public static BookingResponse from(Booking booking) {
+        return from(booking, booking.getDepartureDate());
+    }
+
+    public static BookingResponse from(Booking booking, LocalDate departureDate) {
         return new BookingResponse(
                 booking.getId(),
                 booking.getTravelId(),
                 booking.getUserId(),
                 booking.getTravelTitle(),
                 booking.getPaymentMethod(),
-                booking.getDepartureDate(),
+                departureDate,
                 booking.getPriceMad(),
                 booking.getManagerId(),
                 booking.getStatus().name(),

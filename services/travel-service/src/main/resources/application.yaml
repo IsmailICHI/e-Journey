@@ -5,6 +5,11 @@ server:
 spring:
   application:
     name: travel-service
+  neo4j:
+    uri: ${NEO4J_URI:bolt://localhost:7687}
+    authentication:
+      username: ${NEO4J_USERNAME:neo4j}
+      password: ${NEO4J_PASSWORD:travelplan-local}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -51,9 +56,5 @@ jwt:
 app:
   booking:
     events-topic: ${BOOKING_EVENTS_TOPIC:booking.created.v1}
-  neo4j:
-    uri: ${NEO4J_URI:bolt://localhost:7687}
-    username: ${NEO4J_USERNAME:neo4j}
-    password: ${NEO4J_PASSWORD:travelplan-local}
   elasticsearch:
     url: ${ELASTICSEARCH_URL:http://localhost:9200}
