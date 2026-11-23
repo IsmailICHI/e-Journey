@@ -7,7 +7,9 @@ import { getApiErrorMessage } from '../../core/interceptors/api-error';
 import { BookingResponse, FeedbackResponse, PaymentAnalyticsResponse } from '../../core/models/booking.model';
 import { TravelRequest, TravelResponse } from '../../core/models/travel.model';
 import { UserProfileResponse } from '../../core/models/user.model';
+import { AuthService } from '../../core/services/auth.service';
 import { BookingService } from '../../core/services/booking.service';
+import { ConfirmationService } from '../../core/services/confirmation.service';
 import { PaymentService } from '../../core/services/payment.service';
 import { TravelService } from '../../core/services/travel.service';
 import { UserService } from '../../core/services/user.service';
@@ -21,6 +23,8 @@ import { UserService } from '../../core/services/user.service';
 export class TravelManagerDashboardComponent implements OnInit {
   private readonly travelService = inject(TravelService);
   private readonly bookingService = inject(BookingService);
+  private readonly authService = inject(AuthService);
+  private readonly confirmation = inject(ConfirmationService);
   private readonly paymentService = inject(PaymentService);
   private readonly userService = inject(UserService);
   readonly Math = Math;
@@ -46,7 +50,8 @@ export class TravelManagerDashboardComponent implements OnInit {
   form = this.emptyForm();
 
   get activeSubscribers(): BookingResponse[] {
-    return this.bookings.filter((booking) => booking.status !== 'CANCELLED');
+    return this.bookings.filter((booking) =>
+      booking.status !== 'CANCELLED' && booking.userId !== this.authService.userId);
   }
 
   get travelerCount(): number {
@@ -141,9 +146,15 @@ export class TravelManagerDashboardComponent implements OnInit {
     });
   }
 
-  unsubscribeTraveler(booking: BookingResponse): void {
+  async unsubscribeTraveler(booking: BookingResponse): Promise<void> {
     const name = this.travelerProfiles[booking.id]?.fullName ?? `traveler #${booking.userId}`;
-    if (!window.confirm(`Unsubscribe ${name} from "${booking.travelTitle ?? 'this journey'}"? Only unpaid bookings can be removed.`)) {
+    const confirmed = await this.confirmation.confirm({
+      title: 'Unsubscribe this traveler?',
+      message: `Remove ${name} from "${booking.travelTitle ?? 'this journey'}"? Only unpaid bookings can be removed.`,
+      confirmLabel: 'UNSUBSCRIBE',
+      tone: 'danger'
+    });
+    if (!confirmed) {
       return;
     }
     this.unsubscribingIds.add(booking.id);
@@ -246,8 +257,14 @@ export class TravelManagerDashboardComponent implements OnInit {
     });
   }
 
-  deleteTravel(travel: TravelResponse): void {
-    if (!window.confirm(`Delete "${travel.title}"? This cannot be undone.`)) {
+  async deleteTravel(travel: TravelResponse): Promise<void> {
+    const confirmed = await this.confirmation.confirm({
+      title: 'Delete this journey?',
+      message: `Delete "${travel.title}"? This action cannot be undone.`,
+      confirmLabel: 'DELETE JOURNEY',
+      tone: 'danger'
+    });
+    if (!confirmed) {
       return;
     }
     this.deletingId = travel.travelId;

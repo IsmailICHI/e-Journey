@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.travel.user_service.exceptions.ResourceNotFoundException;
 import com.travel.user_service.exceptions.BadRequestException;
 import com.travel.user_service.models.User;
+import com.travel.user_service.models.Role;
 import com.travel.user_service.repository.UserRepository;
 
 class UserServiceTest {
@@ -52,5 +53,19 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.updateUserRole(42L, "USER"))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Unsupported role: USER");
+    }
+
+    @Test
+    void resolvesDisplayNameForHistoricalManagerReferenceRegardlessOfCurrentRole() {
+        User user = new User();
+        user.setId(1L);
+        user.setFullName("admin");
+        user.setRole(Role.ADMIN);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        var display = userService.getUserDisplay(1L);
+
+        org.assertj.core.api.Assertions.assertThat(display.id()).isEqualTo(1L);
+        org.assertj.core.api.Assertions.assertThat(display.fullName()).isEqualTo("admin");
     }
 }

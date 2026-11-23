@@ -92,6 +92,8 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
 
   activeTab: AdminTab = 'overview';
   users: UserResponse[] = [];
+  readonly managerNames = new Map<number, string>();
+  private readonly managerProfileRequests = new Set<number>();
   travels: TravelResponse[] = [];
   allTravelRecords: TravelResponse[] = [];
   bookings: BookingResponse[] = [];
@@ -209,11 +211,19 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
       this.loadingOversight = remaining > 0;
     };
     this.bookingService.getAllBookings().subscribe({
-      next: (bookings) => { this.bookings = bookings; finished(); },
+      next: (bookings) => {
+        this.bookings = bookings;
+        this.loadMissingManagerNames(bookings.map((booking) => booking.managerId));
+        finished();
+      },
       error: (error: unknown) => { this.errorMessage = getApiErrorMessage(error); finished(); }
     });
     this.bookingService.getFeedback().subscribe({
-      next: (entries) => { this.feedbackEntries = entries; finished(); },
+      next: (entries) => {
+        this.feedbackEntries = entries;
+        this.loadMissingManagerNames(entries.map((entry) => entry.managerId));
+        finished();
+      },
       error: (error: unknown) => { this.errorMessage = getApiErrorMessage(error); finished(); }
     });
     this.bookingService.getReports().subscribe({
@@ -297,7 +307,31 @@ export class AdminComponent implements OnInit, AfterViewInit, OnDestroy {
     if (managerId === null) {
       return 'Administrator / legacy listing';
     }
-    return this.users.find((user) => user.id === managerId)?.fullName ?? `Manager #${managerId}`;
+    return this.users.find((user) => user.id === managerId)?.fullName
+      ?? this.managerNames.get(managerId)
+      ?? `Manager #${managerId}`;
+  }
+
+  private loadMissingManagerNames(managerIds: Array<number | null>): void {
+    const ids = new Set(managerIds.filter((id): id is number => id !== null));
+    ids.forEach((managerId) => {
+      if (this.users.some((user) => user.id === managerId)
+          || this.managerNames.has(managerId)
+          || this.managerProfileRequests.has(managerId)) {
+        return;
+      }
+      this.managerProfileRequests.add(managerId);
+      this.userService.getUserDisplay(managerId).subscribe({
+        next: (manager) => {
+          this.managerNames.set(manager.id, manager.fullName);
+          this.managerProfileRequests.delete(managerId);
+        },
+        error: (error: unknown) => {
+          this.errorMessage = getApiErrorMessage(error);
+          this.managerProfileRequests.delete(managerId);
+        }
+      });
+    });
   }
 
   travelerName(travelerId: number): string {

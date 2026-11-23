@@ -10,6 +10,8 @@ import { getApiErrorMessage } from '../../core/interceptors/api-error';
 import { BookingResponse, FeedbackResponse, ReportResponse, TravelerStatisticsResponse } from '../../core/models/booking.model';
 import { TravelResponse } from '../../core/models/travel.model';
 import { BookingService } from '../../core/services/booking.service';
+import { AuthService } from '../../core/services/auth.service';
+import { ConfirmationService } from '../../core/services/confirmation.service';
 import { PaymentService, PaymentOrderResponse } from '../../core/services/payment.service';
 import { TravelService } from '../../core/services/travel.service';
 
@@ -22,6 +24,8 @@ import { TravelService } from '../../core/services/travel.service';
 export class TravelerDashboardComponent implements OnInit {
   private readonly travelService = inject(TravelService);
   private readonly bookingService = inject(BookingService);
+  private readonly authService = inject(AuthService);
+  private readonly confirmation = inject(ConfirmationService);
   private readonly paymentService = inject(PaymentService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -64,8 +68,8 @@ export class TravelerDashboardComponent implements OnInit {
           )),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe((travels) => {
-      this.searchResults = travels;
-      this.searchSuggestions = this.search.trim().length >= 2 ? travels.slice(0, 5) : [];
+      this.searchResults = this.visibleTravels(travels);
+      this.searchSuggestions = this.search.trim().length >= 2 ? this.searchResults.slice(0, 5) : [];
     });
     this.loadTravels();
     this.loadBookings();
@@ -115,9 +119,13 @@ export class TravelerDashboardComponent implements OnInit {
     return travel.itinerary.flatMap((entry) => entry.activities);
   }
 
+  get todayUtcDate(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
   private loadRecommendations(): void {
     this.travelService.getRecommendations().subscribe({
-      next: (recommendations) => { this.recommendations = recommendations; },
+      next: (recommendations) => { this.recommendations = this.visibleTravels(recommendations); },
       error: (error: unknown) => { this.errorMessage = getApiErrorMessage(error); }
     });
   }
@@ -158,9 +166,9 @@ export class TravelerDashboardComponent implements OnInit {
     this.errorMessage = '';
     this.travelService.getPublicTravels().subscribe({
       next: (travels) => {
-        this.travels = travels;
+        this.travels = this.visibleTravels(travels);
         if (this.search.trim().length < 2) {
-          this.searchResults = travels;
+          this.searchResults = this.travels;
         }
         this.loading = false;
       },
@@ -209,13 +217,50 @@ export class TravelerDashboardComponent implements OnInit {
     });
   }
 
+  isOwnTravel(travel: TravelResponse): boolean {
+    return this.authService.isTravelManager
+      && travel.createdByUserId !== null
+      && travel.createdByUserId === this.authService.userId;
+  }
+
+  travelAvailabilityLabel(travel: TravelResponse): string {
+    const today = this.todayUtcDate;
+    if (travel.endDate && travel.endDate < today) {
+      return 'JOURNEY FINISHED';
+    }
+    if (travel.startDate && travel.startDate <= today) {
+      return travel.endDate && travel.endDate >= today ? 'JOURNEY IN PROGRESS' : 'ALREADY DEPARTED';
+    }
+    return 'DEPARTURE TOO SOON';
+  }
+
+  travelActionLabel(travel: TravelResponse, availableLabel: string): string {
+    if (this.bookingTravelIds.has(travel.travelId)) {
+      return 'RESERVING…';
+    }
+    if (!travel.startDate) {
+      return 'DATES PENDING';
+    }
+    if (travel.startDate <= this.todayUtcDate) {
+      return this.travelAvailabilityLabel(travel);
+    }
+    if (!travel.priceMad || travel.priceMad <= 0) {
+      return 'PRICE PENDING';
+    }
+    return this.canBookTravel(travel) ? availableLabel : 'DEPARTURE TOO SOON';
+  }
+
   canBookTravel(travel: TravelResponse): boolean {
-    if (!travel.startDate || !travel.priceMad || travel.priceMad <= 0) {
+    if (this.isOwnTravel(travel) || !travel.startDate || !travel.priceMad || travel.priceMad <= 0) {
       return false;
     }
-    const today = new Date();
+    const today = new Date(`${this.todayUtcDate}T00:00:00Z`);
     const cutoff = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 3));
     return travel.startDate > cutoff.toISOString().slice(0, 10);
+  }
+
+  private visibleTravels(travels: TravelResponse[]): TravelResponse[] {
+    return travels.filter((travel) => !this.isOwnTravel(travel));
   }
 
   canCancelSubscription(booking: BookingResponse): boolean {
@@ -233,11 +278,17 @@ export class TravelerDashboardComponent implements OnInit {
       && booking.departureDate < new Date().toISOString().slice(0, 10);
   }
 
-  cancelSubscription(booking: BookingResponse): void {
+  async cancelSubscription(booking: BookingResponse): Promise<void> {
     if (!this.canCancelSubscription(booking)) {
       return;
     }
-    if (!window.confirm(`Cancel your unpaid booking for "${booking.travelTitle ?? 'this journey'}"?`)) {
+    const confirmed = await this.confirmation.confirm({
+      title: 'Cancel this booking?',
+      message: `Cancel your unpaid booking for "${booking.travelTitle ?? 'this journey'}"?`,
+      confirmLabel: 'CANCEL BOOKING',
+      tone: 'danger'
+    });
+    if (!confirmed) {
       return;
     }
     this.bookingService.cancelMySubscription(booking.id).subscribe({

@@ -58,7 +58,7 @@ class BookingServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> bookingService.createBooking(2L, new CreateBookingRequest(1L), AUTHORIZATION));
+                () -> bookingService.createBooking(2L, "TRAVELER", new CreateBookingRequest(1L), AUTHORIZATION));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         verify(bookingRepository, never()).save(any());
@@ -70,7 +70,7 @@ class BookingServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> bookingService.createBooking(2L, new CreateBookingRequest(1L), AUTHORIZATION));
+                () -> bookingService.createBooking(2L, "TRAVELER", new CreateBookingRequest(1L), AUTHORIZATION));
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         verify(bookingRepository, never()).save(any());
@@ -82,9 +82,24 @@ class BookingServiceTest {
                 .thenReturn(travel(LocalDate.now(ZoneOffset.UTC).plusDays(7)));
         when(bookingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertNotNull(bookingService.createBooking(2L, new CreateBookingRequest(1L), AUTHORIZATION));
+        assertNotNull(bookingService.createBooking(
+                2L, "TRAVELER", new CreateBookingRequest(1L), AUTHORIZATION));
 
         verify(bookingRepository).save(any());
+    }
+
+    @Test
+    void preventsTravelManagerFromBookingOwnJourney() {
+        when(travelDetailsClient.getTravel(1L, AUTHORIZATION))
+                .thenReturn(travel(LocalDate.now(ZoneOffset.UTC).plusDays(7)));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.createBooking(
+                        3L, "TRAVEL_MANAGER", new CreateBookingRequest(1L), AUTHORIZATION));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(bookingRepository, never()).save(any());
     }
 
     @Test
@@ -100,6 +115,23 @@ class BookingServiceTest {
         List<BookingResponse> bookings = bookingService.getBookingsForUser(2L, AUTHORIZATION);
 
         assertEquals(currentDepartureDate, bookings.get(0).departureDate());
+    }
+
+    @Test
+    void excludesManagerFromOwnJourneyParticipants() {
+        Booking selfBooking = new Booking();
+        selfBooking.setUserId(3L);
+        selfBooking.setManagerId(3L);
+        Booking travelerBooking = new Booking();
+        travelerBooking.setUserId(2L);
+        travelerBooking.setManagerId(3L);
+        when(bookingRepository.findByManagerIdOrderByCreatedAtDesc(3L))
+                .thenReturn(List.of(selfBooking, travelerBooking));
+
+        List<BookingResponse> bookings = bookingService.getBookingsForManager(3L);
+
+        assertEquals(1, bookings.size());
+        assertEquals(2L, bookings.get(0).userId());
     }
 
     private TravelDetailsClient.TravelSnapshot travel(LocalDate departureDate) {

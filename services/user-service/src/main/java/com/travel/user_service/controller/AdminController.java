@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import com.travel.user_service.dto.admin.*;
 import com.travel.user_service.dto.profile.UserProfileResponse;
+import com.travel.user_service.dto.profile.UserDisplayResponse;
 import com.travel.user_service.services.UserService;
 
 import jakarta.validation.Valid;
@@ -35,6 +36,12 @@ public class AdminController {
     @GetMapping("/users/statistics")
     public UserStatisticsResponse getUserStatistics(@AuthenticationPrincipal Jwt jwt) {
         return userService.getUserStatistics(jwt.getSubject());
+    }
+
+    @GetMapping("/users/{id}/display")
+    public UserDisplayResponse getUserDisplay(
+            @PathVariable @Positive(message = "User ID must be a positive number") Long id) {
+        return userService.getUserDisplay(id);
     }
 
     @PatchMapping("/users/{id}/role")

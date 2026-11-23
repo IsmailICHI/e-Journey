@@ -5,7 +5,6 @@ import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
 import { roleGuard } from './core/guards/role.guard';
 import { travelManagerGuard } from './core/guards/travel-manager.guard';
-import { travelerGuard } from './core/guards/traveler.guard';
 
 export const routes: Routes = [
     {
@@ -39,12 +38,12 @@ export const routes: Routes = [
     },
     {
         path: 'payment/:bookingId',
-        canActivate: [travelerGuard],
+        canActivate: [roleGuard(['TRAVELER', 'TRAVEL_MANAGER'])],
         loadComponent: () => import('./pages/payment/payment.component').then((page) => page.PaymentComponent),
     },
     {
         path: 'managers/:id',
-        canActivate: [travelerGuard],
+        canActivate: [roleGuard(['TRAVELER', 'TRAVEL_MANAGER'])],
         loadComponent: () => import('./pages/manager-profile/manager-profile.component').then((page) => page.ManagerProfileComponent),
     },
     {

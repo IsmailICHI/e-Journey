@@ -17,3 +17,8 @@ export interface PublicManagerResponse {
   id: number;
   fullName: string;
 }
+
+export interface UserDisplayResponse {
+  id: number;
+  fullName: string;
+}

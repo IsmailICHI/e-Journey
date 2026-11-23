@@ -320,6 +320,7 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         private void applySampleTravelDetails(List<TravelEntity> travels) {
+                travels.forEach(travel -> travel.setCreatedByUserId(1L));
                 List<String> accommodations = List.of(
                                 "Paris boutique hotel",
                                 "Shinjuku city hotel",

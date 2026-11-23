@@ -99,6 +99,12 @@ public class UserService {
         return new com.travel.user_service.dto.profile.PublicManagerResponse(user.getId(), user.getFullName());
     }
 
+    public com.travel.user_service.dto.profile.UserDisplayResponse getUserDisplay(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return new com.travel.user_service.dto.profile.UserDisplayResponse(user.getId(), user.getFullName());
+    }
+
     public UserProfileResponse updateUserRole(Long id, String roleInput) {
         String normalizedRole = roleInput == null ? "" : roleInput.trim();
         if (normalizedRole.isBlank()) {

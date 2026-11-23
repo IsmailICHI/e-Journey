@@ -43,8 +43,14 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse createBooking(Long userId, CreateBookingRequest request, String authorization) {
+    public BookingResponse createBooking(
+            Long userId, String role, CreateBookingRequest request, String authorization) {
         TravelDetailsClient.TravelSnapshot travel = travelDetailsClient.getTravel(request.travelId(), authorization);
+        if ("TRAVEL_MANAGER".equalsIgnoreCase(role) && userId.equals(travel.managerId())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Travel managers cannot book their own journeys");
+        }
         if (travel.departureDate() == null) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT,
@@ -97,6 +103,7 @@ public class BookingService {
     @Transactional(readOnly = true)
     public java.util.List<BookingResponse> getBookingsForManager(Long managerId) {
         return bookingRepository.findByManagerIdOrderByCreatedAtDesc(managerId).stream()
+                .filter(booking -> !managerId.equals(booking.getUserId()))
                 .map(BookingResponse::from)
                 .toList();
     }

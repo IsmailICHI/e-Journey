@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PageResponse } from '../models/page.model';
-import { PublicManagerResponse, UserProfileResponse, UserResponse } from '../models/user.model';
+import { PublicManagerResponse, UserDisplayResponse, UserProfileResponse, UserResponse } from '../models/user.model';
 
 export interface UserStatisticsResponse {
   totalUsers: number;
@@ -35,6 +35,10 @@ export class UserService {
   getPublicManagerProfile(managerId: number): Observable<PublicManagerResponse> {
     return this.http.get<PublicManagerResponse>(
       `${environment.apiUrl}/api/v1/users/public/managers/${managerId}`);
+  }
+
+  getUserDisplay(userId: number): Observable<UserDisplayResponse> {
+    return this.http.get<UserDisplayResponse>(`${this.usersUrl}/${userId}/display`);
   }
 
   updateUserRole(id: number, role: string): Observable<UserProfileResponse> {

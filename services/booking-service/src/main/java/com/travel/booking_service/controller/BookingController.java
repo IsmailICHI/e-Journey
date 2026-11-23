@@ -53,6 +53,7 @@ public class BookingController {
             @Valid @RequestBody CreateBookingRequest request) {
             return bookingService.createBooking(
                     userId(jwt),
+                    jwt.getClaimAsString("role"),
                     request,
                     "Bearer " + jwt.getTokenValue());
     }
