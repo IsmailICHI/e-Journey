@@ -29,14 +29,18 @@ public class JwtService {
     }
 
     public String generateToken(User user) {
+        return generateToken(user, 0);
+    }
 
+    public String generateToken(User user, long tokenVersion) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("userId", user.getId())
-                .claim("role", user.getRole() )
+                .claim("role", user.getRole().name())
+                .claim("tokenVersion", tokenVersion)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)

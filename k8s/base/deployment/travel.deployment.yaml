@@ -28,7 +28,10 @@ spec:
             - name: SERVER_PORT
               value: "8082"
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://postgres:5432/travel_db
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: travel-datasource-url
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -44,6 +47,33 @@ spec:
                 secretKeyRef:
                   name: travel-plan-secrets
                   key: jwt-secret
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: kafka-bootstrap-servers
+            - name: BOOKING_EVENTS_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: booking-events-topic
+            - name: NEO4J_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: neo4j-uri
+            - name: NEO4J_USERNAME
+              value: neo4j
+            - name: NEO4J_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: neo4j-password
+            - name: ELASTICSEARCH_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: elasticsearch-url
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness

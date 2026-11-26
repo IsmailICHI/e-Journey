@@ -25,6 +25,41 @@ public class UserTokenRevocationService {
     }
 
     public void revokeUserTokens(Long userId) {
-        redisTemplate.opsForValue().set(USER_BLACKLIST_KEY_PREFIX + userId, "revoked", tokenLifetime);
+        String key = USER_BLACKLIST_KEY_PREFIX + userId;
+        Long currentVersion = readVersion(key);
+        if (currentVersion == null) {
+            redisTemplate.opsForValue().set(key, "0");
+        } else if (currentVersion < 0) {
+            redisTemplate.opsForValue().set(key, "1", tokenLifetime);
+            return;
+        }
+        redisTemplate.opsForValue().increment(key);
+        redisTemplate.expire(key, tokenLifetime);
+    }
+
+    public long currentTokenVersion(Long userId) {
+        String key = USER_BLACKLIST_KEY_PREFIX + userId;
+        Long version = readVersion(key);
+        if (version == null) {
+            return 0;
+        }
+        if (version < 0) {
+            redisTemplate.opsForValue().set(key, "1", tokenLifetime);
+            return 1;
+        }
+        redisTemplate.expire(key, tokenLifetime);
+        return version;
+    }
+
+    private Long readVersion(String key) {
+        String value = redisTemplate.opsForValue().get(key);
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+            return -1L;
+        }
     }
 }

@@ -24,8 +24,11 @@ spring:
       password: ${REDIS_PASSWORD:}
 
 jwt:
-  secret: ${JWT_SECRET:defaultsecretkeydefaultsecretkeydefaultsecretkey}
+  secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:3600000}
+
+booking-service:
+  base-url: ${BOOKING_SERVICE_URL:http://localhost:8085}
 
 management:
   endpoints:

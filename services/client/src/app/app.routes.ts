@@ -3,6 +3,8 @@ import { HomeComponent } from './pages/home/home.component';
 import { adminGuard } from './core/guards/admin.guard';
 import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
+import { roleGuard } from './core/guards/role.guard';
+import { travelManagerGuard } from './core/guards/travel-manager.guard';
 
 export const routes: Routes = [
     {
@@ -28,6 +30,26 @@ export const routes: Routes = [
         path: 'profile',
         canActivate: [authGuard],
         loadComponent: () => import('./pages/profile/profile.component').then((page) => page.ProfileComponent),
+    },
+    {
+        path: 'traveler-dashboard',
+        canActivate: [roleGuard(['TRAVELER', 'TRAVEL_MANAGER'])],
+        loadComponent: () => import('./pages/traveler-dashboard/traveler-dashboard.component').then((page) => page.TravelerDashboardComponent),
+    },
+    {
+        path: 'payment/:bookingId',
+        canActivate: [roleGuard(['TRAVELER', 'TRAVEL_MANAGER'])],
+        loadComponent: () => import('./pages/payment/payment.component').then((page) => page.PaymentComponent),
+    },
+    {
+        path: 'managers/:id',
+        canActivate: [roleGuard(['TRAVELER', 'TRAVEL_MANAGER'])],
+        loadComponent: () => import('./pages/manager-profile/manager-profile.component').then((page) => page.ManagerProfileComponent),
+    },
+    {
+        path: 'travel-manager-dashboard',
+        canActivate: [travelManagerGuard],
+        loadComponent: () => import('./pages/travel-manager-dashboard/travel-manager-dashboard.component').then((page) => page.TravelManagerDashboardComponent),
     },
     {
         path: 'dashboard',

@@ -3,6 +3,7 @@ package com.travel.travel_service.services;
 import java.util.List;
 import java.util.Optional;
 import java.util.ArrayList;
+import java.math.BigDecimal;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,17 +27,26 @@ public class TravelService {
         private static final int ADMIN_PAGE_SIZE = 5;
 
         private final TravelRepository travelRepository;
+        private final TravelSearchService travelSearchService;
+        private final BookingGraphService bookingGraphService;
+        private volatile boolean searchIndexInitialized;
+        private volatile boolean graphCatalogInitialized;
 
-        public TravelService(TravelRepository travelRepository) {
+        public TravelService(
+                TravelRepository travelRepository,
+                TravelSearchService travelSearchService,
+                BookingGraphService bookingGraphService) {
                 this.travelRepository = travelRepository;
+                this.travelSearchService = travelSearchService;
+                this.bookingGraphService = bookingGraphService;
         }
 
-        @Transactional(readOnly = true)
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
         public Optional<TravelResponse> getTravel(Long id) {
                 return travelRepository.findById(id).map(this::toResponse);
         }
 
-        @Transactional(readOnly = true)
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
         public List<TravelResponse> getAllTravels() {
 
                 return travelRepository.findAll()
@@ -45,10 +55,13 @@ public class TravelService {
                                 .toList();
         }
 
-        @Transactional(readOnly = true)
-        public TravelPageResponse getTravelPage(int page) {
-                Page<TravelEntity> travels = travelRepository.findAllByOrderByTravelIdAsc(
-                                PageRequest.of(Math.max(0, page), ADMIN_PAGE_SIZE, Sort.unsorted()));
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
+        public TravelPageResponse getTravelPage(int page, Long ownerId) {
+                Page<TravelEntity> travels = (ownerId == null
+                                ? travelRepository.findAllByOrderByTravelIdAsc(
+                                                PageRequest.of(Math.max(0, page), ADMIN_PAGE_SIZE, Sort.unsorted()))
+                                : travelRepository.findByCreatedByUserIdOrderByTravelIdAsc(ownerId,
+                                                PageRequest.of(Math.max(0, page), ADMIN_PAGE_SIZE, Sort.unsorted())));
 
                 List<TravelResponse> content = travels.getContent().stream()
                                 .map(this::toResponse)
@@ -60,6 +73,55 @@ public class TravelService {
                                 travels.getTotalElements(),
                                 travels.getTotalPages(),
                                 travels.isLast());
+        }
+
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
+        public List<TravelResponse> getAllTravelAnalytics() {
+                return travelRepository.findAllByOrderByTravelIdAsc().stream()
+                                .map(this::toResponse)
+                                .toList();
+        }
+
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
+        public List<TravelResponse> searchTravels(String query, int limit) {
+                if (!searchIndexInitialized) {
+                        synchronized (this) {
+                                if (!searchIndexInitialized) {
+                                        travelSearchService.ensureIndex();
+                                        travelRepository.findAllByOrderByTravelIdAsc().stream()
+                                                        .map(this::toResponse)
+                                                        .forEach(travelSearchService::index);
+                                        searchIndexInitialized = true;
+                                }
+                        }
+                }
+                return travelSearchService.search(query, limit);
+        }
+
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
+        public List<TravelResponse> getRecommendations(Long userId, int limit) {
+                if (!graphCatalogInitialized) {
+                        synchronized (this) {
+                                if (!graphCatalogInitialized) {
+                                        travelRepository.findAllByOrderByTravelIdAsc().stream()
+                                                        .map(this::toResponse)
+                                                        .forEach(bookingGraphService::indexTravel);
+                                        graphCatalogInitialized = true;
+                                }
+                        }
+                }
+                return bookingGraphService.recommendTravels(userId, limit).stream()
+                                .map(this::getTravel)
+                                .flatMap(Optional::stream)
+                                .toList();
+        }
+
+        @Transactional(transactionManager = "transactionManager", readOnly = true)
+        public List<TravelResponse> getManagerTravels(Long managerId) {
+                return travelRepository.findAllByOrderByTravelIdAsc().stream()
+                                .filter(travel -> managerId.equals(travel.getCreatedByUserId()))
+                                .map(this::toResponse)
+                                .toList();
         }
 
         private TravelResponse toResponse(TravelEntity travel) {
@@ -87,30 +149,44 @@ public class TravelService {
                                 travel.getAccommodation(),
                                 travel.getTransportation(),
                                 travel.getPaymentMethod(),
+                                travel.getPriceMad(),
+                                travel.getCreatedByUserId(),
                                 itinerary);
         }
 
-        @Transactional
-        public TravelResponse createTravel(TravelRequest request) {
+        @Transactional(transactionManager = "transactionManager")
+        public TravelResponse createTravel(TravelRequest request, Long creatorId) {
                 TravelEntity travel = new TravelEntity();
                 applyRequest(travel, request);
-                return toResponse(travelRepository.save(travel));
+                travel.setCreatedByUserId(creatorId);
+                TravelResponse created = toResponse(travelRepository.save(travel));
+                travelSearchService.index(created);
+                bookingGraphService.indexTravel(created);
+                return created;
         }
 
-        @Transactional
-        public Optional<TravelResponse> updateTravel(Long id, TravelRequest request) {
-                return travelRepository.findById(id).map(travel -> {
+        @Transactional(transactionManager = "transactionManager")
+        public Optional<TravelResponse> updateTravel(Long id, TravelRequest request, Long actorId, boolean admin) {
+                return travelRepository.findById(id)
+                        .filter(travel -> admin || actorId.equals(travel.getCreatedByUserId()))
+                        .map(travel -> {
                         applyRequest(travel, request);
-                        return toResponse(travelRepository.save(travel));
+                        TravelResponse updated = toResponse(travelRepository.save(travel));
+                        travelSearchService.index(updated);
+                        bookingGraphService.indexTravel(updated);
+                        return updated;
                 });
         }
 
-        @Transactional
-        public boolean deleteTravel(Long id) {
-                if (!travelRepository.existsById(id)) {
+        @Transactional(transactionManager = "transactionManager")
+        public boolean deleteTravel(Long id, Long actorId, boolean admin) {
+                TravelEntity travel = travelRepository.findById(id).orElse(null);
+                if (travel == null || (!admin && !actorId.equals(travel.getCreatedByUserId()))) {
                         return false;
                 }
-                travelRepository.deleteById(id);
+                travelRepository.delete(travel);
+                travelSearchService.delete(id);
+                bookingGraphService.deleteTravel(id);
                 return true;
         }
 
@@ -148,6 +224,7 @@ public class TravelService {
                 travel.setAccommodation(request.accommodation() != null ? request.accommodation().trim() : null);
                 travel.setTransportation(request.transportation() != null ? request.transportation().trim() : null);
                 travel.setPaymentMethod(request.paymentMethod());
+                travel.setPriceMad(request.priceMad());
                 travel.getItinerary().clear();
 
                 if (request.itinerary() != null) {

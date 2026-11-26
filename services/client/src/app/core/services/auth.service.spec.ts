@@ -49,7 +49,7 @@ describe('AuthService', () => {
   it('does not grant admin access to a user login', () => {
     service.login({ email: 'traveler@example.test', password: 'secret-password' }).subscribe();
     http.expectOne(`${environment.apiUrl}/api/v1/auth/login`)
-      .flush({ token: tokenFor('traveler@example.test', 'User', 8), tokenType: 'Bearer', role: 'User', state: true });
+      .flush({ token: tokenFor('traveler@example.test', 'Traveler', 8), tokenType: 'Bearer', role: 'Traveler', state: true });
 
     expect(service.isLoggedIn).toBeTrue();
     expect(service.isAdmin).toBeFalse();

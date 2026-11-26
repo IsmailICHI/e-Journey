@@ -6,7 +6,11 @@ import com.travel.travel_service.repository.TravelRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -20,9 +24,11 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         @Override
+        @Transactional(transactionManager = "transactionManager")
         public void run(String... args) {
 
                 if (travelRepository.count() > 0) {
+                        updateExistingSampleTravelDetails();
                         log.info("Travel database already contains data. Skipping initialization.");
                         return;
                 }
@@ -39,6 +45,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 + "French culture, museums and local experiences.")
                                                 .imageUrl("https://upload.wikimedia.org/wikipedia/commons/1/15/Paris_from_the_Arc_de_Triomphe%2C_17_October_2019.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original")
                                                 .duration(3)
+                                                .priceMad(new BigDecimal("4200.00"))
                                                 .itinerary(List.of(
                                                                 ItineraryEntity.builder()
                                                                                 .dayNumber(1)
@@ -84,6 +91,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 + "modern technology, food and famous neighborhoods.")
                                                 .imageUrl("https://upload.wikimedia.org/wikipedia/commons/archive/6/6d/20251228182740%21Tokyo_Tower%2C_Minato_City.jpg")
                                                 .duration(4)
+                                                .priceMad(new BigDecimal("6800.00"))
                                                 .itinerary(List.of(
                                                                 ItineraryEntity.builder()
                                                                                 .dayNumber(1)
@@ -140,6 +148,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 + "and famous New York experiences.")
                                                 .imageUrl("https://thumb.wikimedia.org/wikipedia/commons/thumb/0/01/New_York_City_%28New_York%2C_USA%29%2C_Empire_State_Building_--_2012_--_6448.jpg/1920px-New_York_City_%28New_York%2C_USA%29%2C_Empire_State_Building_--_2012_--_6448.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail")
                                                 .duration(4)
+                                                .priceMad(new BigDecimal("7200.00"))
                                                 .itinerary(List.of(
                                                                 ItineraryEntity.builder()
                                                                                 .dayNumber(1)
@@ -196,6 +205,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 + "shopping districts and cultural attractions.")
                                                 .imageUrl("https://upload.wikimedia.org/wikipedia/commons/4/4a/Beach_of_Habtoor_Grand_Resort_Spa%2C_Dubai_UAE.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original")
                                                 .duration(3)
+                                                .priceMad(new BigDecimal("3500.00"))
                                                 .itinerary(List.of(
                                                                 ItineraryEntity.builder()
                                                                                 .dayNumber(1)
@@ -241,6 +251,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 + "historic architecture, gardens and Moroccan cuisine.")
                                                 .imageUrl("https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/Coucher_de_soleil_sur_la_place_Jamaa_El_Fna.jpg/1920px-Coucher_de_soleil_sur_la_place_Jamaa_El_Fna.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail")
                                                 .duration(3)
+                                                .priceMad(new BigDecimal("2800.00"))
                                                 .itinerary(List.of(
                                                                 ItineraryEntity.builder()
                                                                                 .dayNumber(1)
@@ -276,6 +287,7 @@ public class DataInitializer implements CommandLineRunner {
                                                                                 .build()))
                                                 .build());
 
+                applySampleTravelDetails(travels);
                 travels.forEach(travel -> {
                                 if (travel.getItinerary() != null) {
                                                 travel.getItinerary().forEach(itinerary -> itinerary.setTravel(travel));
@@ -287,5 +299,86 @@ public class DataInitializer implements CommandLineRunner {
                 log.info(
                                 "Successfully initialized travel database with {} travel itineraries.",
                                 travels.size());
+        }
+
+        private void updateExistingSampleTravelDetails() {
+                List<String> sampleTitles = List.of(
+                                "Discover Paris",
+                                "Tokyo Experience",
+                                "New York City Adventure",
+                                "Dubai Discovery",
+                                "Marrakech Escape");
+                List<TravelEntity> samples = travelRepository.findAllByOrderByTravelIdAsc().stream()
+                                .filter(travel -> sampleTitles.contains(travel.getTitle())
+                                                && travel.getCreatedByUserId() == null)
+                                .toList();
+                if (!samples.isEmpty()) {
+                        applySampleTravelDetails(samples);
+                        travelRepository.saveAll(samples);
+                        log.info("Filled missing required fields for {} sample travels.", samples.size());
+                }
+        }
+
+        private void applySampleTravelDetails(List<TravelEntity> travels) {
+                travels.forEach(travel -> travel.setCreatedByUserId(1L));
+                List<String> accommodations = List.of(
+                                "Paris boutique hotel",
+                                "Shinjuku city hotel",
+                                "Manhattan hotel",
+                                "Downtown Dubai hotel",
+                                "Medina riad");
+                List<String> transportation = List.of(
+                                "Metro and walking",
+                                "Metro and rail",
+                                "Subway and walking",
+                                "Metro and private transfer",
+                                "Airport transfer and walking");
+                List<List<String>> destinations = List.of(
+                                List.of("Eiffel Tower", "Louvre", "Montmartre"),
+                                List.of("Shibuya", "Asakusa", "Akihabara"),
+                                List.of("Manhattan", "Central Park", "Brooklyn"),
+                                List.of("Downtown Dubai", "Old Dubai", "Desert"),
+                                List.of("Medina", "Majorelle Garden", "Bahia Palace"));
+                List<String> sampleTitles = List.of(
+                                "Discover Paris",
+                                "Tokyo Experience",
+                                "New York City Adventure",
+                                "Dubai Discovery",
+                                "Marrakech Escape");
+                List<BigDecimal> prices = List.of(
+                                new BigDecimal("4200.00"),
+                                new BigDecimal("6800.00"),
+                                new BigDecimal("7200.00"),
+                                new BigDecimal("3500.00"),
+                                new BigDecimal("2800.00"));
+
+                for (TravelEntity travel : travels) {
+                        int sampleIndex = sampleTitles.indexOf(travel.getTitle());
+                        if (sampleIndex < 0 || travel.getCreatedByUserId() != null) {
+                                continue;
+                        }
+                        if (travel.getAccommodation() == null || travel.getAccommodation().isBlank()) {
+                                travel.setAccommodation(accommodations.get(sampleIndex));
+                        }
+                        if (travel.getTransportation() == null || travel.getTransportation().isBlank()) {
+                                travel.setTransportation(transportation.get(sampleIndex));
+                        }
+                        if (travel.getPaymentMethod() == null || travel.getPaymentMethod().isBlank()) {
+                                travel.setPaymentMethod("PayPal");
+                        }
+                        if (travel.getPriceMad() == null) {
+                                travel.setPriceMad(prices.get(sampleIndex));
+                        }
+                        if (travel.getDestinations() == null || travel.getDestinations().isEmpty()) {
+                                travel.setDestinations(new ArrayList<>(destinations.get(sampleIndex)));
+                        }
+                        if (travel.getStartDate() == null) {
+                                travel.setStartDate(LocalDate.now().plusDays(30L + sampleIndex * 7L));
+                        }
+                        if (travel.getEndDate() == null && travel.getStartDate() != null) {
+                                travel.setEndDate(travel.getStartDate().plusDays(
+                                                Math.max(0, travel.getDuration() - 1)));
+                        }
+                }
         }
 }

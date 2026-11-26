@@ -7,8 +7,52 @@
     - ../group_vars/all.yml
   environment:
     KUBECONFIG: "{{ kubeconfig_path }}"
+  vars:
+    # Application secrets come from the ignored repository-root .env file on the
+    # workstation (override with -e travel_plan_env_file=/path/to/.env). They are
+    # sent to kubectl over stdin and never written to disk on the VM.
+    travel_plan_env_file: "{{ playbook_dir }}/../../../.env"
+    travel_plan_required_secrets:
+      - JWT_SECRET
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - REDIS_PASSWORD
+      - NEO4J_PASSWORD
+      - BOOKING_PAYMENT_CONFIRMATION_SECRET
 
   tasks:
+    - name: Check that the .env file exists on the workstation
+      ansible.builtin.stat:
+        path: "{{ travel_plan_env_file }}"
+      delegate_to: localhost
+      become: false
+      register: travel_plan_env_stat
+
+    - name: Require the .env file
+      ansible.builtin.assert:
+        that: travel_plan_env_stat.stat.exists
+        fail_msg: >-
+          {{ travel_plan_env_file }} is missing. Copy .env.example to .env at the
+          repository root and fill in the application secrets.
+
+    - name: Load application settings from .env
+      ansible.builtin.set_fact:
+        travel_plan_env: >-
+          {{ travel_plan_env | default({}) | combine({
+               (item.split('=', 1)[0] | trim):
+               (item.split('=', 1)[1] | trim | regex_replace('^([\"'']?)(.*)\1$', '\2'))
+             }) }}
+      loop: "{{ lookup('ansible.builtin.file', travel_plan_env_file).splitlines()
+                | select('match', '^\\s*[A-Za-z_][A-Za-z0-9_]*\\s*=') | list }}"
+      no_log: true
+
+    - name: Require the application secrets in .env
+      ansible.builtin.assert:
+        that: (travel_plan_env[item] | default('')) | length > 0
+        fail_msg: "{{ item }} must be set to a non-empty value in .env"
+        quiet: true
+      loop: "{{ travel_plan_required_secrets }}"
+
     - name: Ensure the application namespace exists
       ansible.builtin.command:
         argv:
@@ -18,31 +62,37 @@
           - /vagrant/k8s/base/namespace.yaml
       changed_when: false
 
-    - name: Copy the development Secret manifest to the VM
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../files/travel-plan-secrets.yaml"
-        dest: /tmp/travel-plan-secrets.yaml
-        owner: root
-        group: root
-        mode: "0600"
-      no_log: true
-
-    - name: Apply the development Secret manifest
+    - name: Apply the application Secret from .env
       ansible.builtin.command:
         argv:
           - kubectl
           - apply
-          - -f
-          - /tmp/travel-plan-secrets.yaml
+          # Server-side apply: client-side apply would copy every secret value
+          # in plain text into the last-applied-configuration annotation.
+          - --server-side
+          - --force-conflicts
+          - --field-manager=travel-plan-deploy
+          - --filename=-
+        stdin: "{{ {
+          'apiVersion': 'v1',
+          'kind': 'Secret',
+          'metadata': {'name': 'travel-plan-secrets', 'namespace': 'travel-plan'},
+          'type': 'Opaque',
+          'stringData': {
+            'jwt-secret': travel_plan_env.JWT_SECRET,
+            'postgres-user': travel_plan_env.POSTGRES_USER,
+            'postgres-password': travel_plan_env.POSTGRES_PASSWORD,
+            'redis-password': travel_plan_env.REDIS_PASSWORD,
+            'neo4j-password': travel_plan_env.NEO4J_PASSWORD,
+            'paypal-client-id': travel_plan_env.PAYPAL_CLIENT_ID | default(''),
+            'paypal-client-secret': travel_plan_env.PAYPAL_CLIENT_SECRET | default(''),
+            'stripe-secret-key': travel_plan_env.STRIPE_SECRET_KEY | default(''),
+            'booking-payment-confirmation-secret': travel_plan_env.BOOKING_PAYMENT_CONFIRMATION_SECRET
+          }} | to_json }}"
+        stdin_add_newline: true
       register: secret_apply
       no_log: true
       changed_when: "' created' in secret_apply.stdout or ' configured' in secret_apply.stdout"
-
-    - name: Remove the temporary Secret manifest from the VM
-      ansible.builtin.file:
-        path: /tmp/travel-plan-secrets.yaml
-        state: absent
-      no_log: true
 
     - name: Build application images and import them into k3s
       ansible.builtin.shell: |
@@ -63,6 +113,10 @@
           image: travelplan/user-service:dev
         - dockerfile: services/travel-service/DockerFile
           image: travelplan/travel-service:dev
+        - dockerfile: services/booking-service/Dockerfile
+          image: travelplan/booking-service:dev
+        - dockerfile: services/payment-service/Dockerfile
+          image: travelplan/payment-service:dev
       changed_when: true
 
     - name: Apply the application manifests from the repo
@@ -139,6 +193,21 @@
           - --timeout=180s
       changed_when: false
 
+    - name: Wait for Kafka and Elasticsearch to become Ready
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - travel-plan
+          - rollout
+          - status
+          - "statefulset/{{ item }}"
+          - --timeout=600s
+      loop:
+        - kafka
+        - elasticsearch
+      changed_when: false
+
     - name: Read existing PostgreSQL databases
       ansible.builtin.command:
         argv:
@@ -150,7 +219,7 @@
           - --
           - psql
           - -U
-          - "{{ lookup('env', 'POSTGRES_USER') | default('postgres', true) }}"
+          - "{{ travel_plan_env.POSTGRES_USER }}"
           - -d
           - postgres
           - -tAc
@@ -169,7 +238,7 @@
           - --
           - psql
           - -U
-          - "{{ lookup('env', 'POSTGRES_USER') | default('postgres', true) }}"
+          - "{{ travel_plan_env.POSTGRES_USER }}"
           - -d
           - postgres
           - -c
@@ -177,6 +246,8 @@
       loop:
         - user_db
         - travel_db
+        - booking_db
+        - payment_db
       when: item not in postgres_databases.stdout_lines
       changed_when: true
 
@@ -195,4 +266,6 @@
         - gateway
         - user-service
         - travel-service
+        - booking-service
+        - payment-service
       changed_when: false

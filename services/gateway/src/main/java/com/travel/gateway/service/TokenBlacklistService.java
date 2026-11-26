@@ -32,13 +32,24 @@ public class TokenBlacklistService {
                 .defaultIfEmpty(false);
     }
 
-    public Mono<Boolean> isBlacklisted(String token, String userId) {
+    public Mono<Boolean> isBlacklisted(String token, String userId, long tokenVersion) {
         if (!enabled) {
             return Mono.just(false);
         }
+        if (tokenVersion < 0) {
+            return Mono.just(true);
+        }
         return Mono.zip(
                 isBlacklisted(token),
-                redisTemplate.hasKey("blacklist:user:" + userId).defaultIfEmpty(false),
-                (tokenBlacklisted, userBlacklisted) -> tokenBlacklisted || userBlacklisted);
+                redisTemplate.opsForValue().get("blacklist:user:" + userId)
+                        .defaultIfEmpty("0")
+                        .map(version -> {
+                            try {
+                                return tokenVersion < Long.parseLong(version);
+                            } catch (NumberFormatException ex) {
+                                return true;
+                            }
+                        }),
+                (tokenBlacklisted, userRevoked) -> tokenBlacklisted || userRevoked);
     }
 }

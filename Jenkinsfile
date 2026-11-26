@@ -25,6 +25,9 @@ pipeline {
                     test -f services/gateway/pom.xml
                     test -f services/user-service/pom.xml
                     test -f services/travel-service/pom.xml
+                    test -f services/booking-service/pom.xml
+                    test -f services/payment-service/pom.xml
+                    test -f services/client/Dockerfile
                     kubectl kustomize k8s/overlays/dev > "$WORKSPACE/travel-plan-rendered.yaml"
                 '''
             }
@@ -59,7 +62,7 @@ pipeline {
                     steps {
                         sh '''
                     set -eu
-                    for service in gateway user-service travel-service; do
+                    for service in gateway user-service travel-service booking-service payment-service; do
                         mvn -B -f "services/$service/pom.xml" clean verify
                     done
                 '''
@@ -78,17 +81,21 @@ pipeline {
                 sh '''
                     set -eu
                     mkdir -p .ci-images
-                                        docker build --file services/client/Dockerfile \
-                                            --tag "travelplan/frontend:$IMAGE_TAG" .
-                                        docker build --file services/gateway/Dockerfile \
-                                            --tag "travelplan/gateway:$IMAGE_TAG" .
-                                        docker build --file services/user-service/Dockerfile \
-                                            --tag "travelplan/user-service:$IMAGE_TAG" .
-                                        docker build --file services/travel-service/DockerFile \
-                                            --tag "travelplan/travel-service:$IMAGE_TAG" .
-                    for image in frontend gateway user-service travel-service; do
-                                                docker save --output ".ci-images/$image.tar" \
-                                                    "travelplan/$image:$IMAGE_TAG"
+                    docker build --file services/client/Dockerfile \
+                        --tag "travelplan/frontend:$IMAGE_TAG" .
+                    docker build --file services/gateway/Dockerfile \
+                        --tag "travelplan/gateway:$IMAGE_TAG" .
+                    docker build --file services/user-service/Dockerfile \
+                        --tag "travelplan/user-service:$IMAGE_TAG" .
+                    docker build --file services/travel-service/DockerFile \
+                        --tag "travelplan/travel-service:$IMAGE_TAG" .
+                    docker build --file services/booking-service/Dockerfile \
+                        --tag "travelplan/booking-service:$IMAGE_TAG" .
+                    docker build --file services/payment-service/Dockerfile \
+                        --tag "travelplan/payment-service:$IMAGE_TAG" .
+                    for image in frontend gateway user-service travel-service booking-service payment-service; do
+                        docker save --output ".ci-images/$image.tar" \
+                            "travelplan/$image:$IMAGE_TAG"
                     done
                 '''
             }

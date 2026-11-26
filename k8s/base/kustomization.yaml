@@ -9,8 +9,12 @@ resources:
   - db/deployment/neo4j.deployment.yaml
   - db/services/pg.service.yaml
   - db/services/neo4j.service.yaml
+  - deployment/booking.deployment.yaml
+  - deployment/elasticsearch.deployment.yaml
   - deployment/frontend.deployment.yaml
   - deployment/gateway.deployment.yaml
+  - deployment/kafka.deployment.yaml
+  - deployment/payment.deployment.yaml
   - deployment/redis.deployment.yaml
   - deployment/travel.deployment.yaml
   - deployment/user.deployment.yaml
@@ -20,10 +24,16 @@ resources:
   - services/grafana.service.yaml
   - services/frontend.service.yaml
   - services/gateway.service.yaml
+  - services/booking.service.yaml
+  - services/elasticsearch.service.yaml
+  - services/kafka.service.yaml
+  - services/kafka-headless.service.yaml
+  - services/payment.service.yaml
   - services/redis.service.yaml
   - services/travel.service.yaml
   - services/user.service.yaml
   - hpa/gateway.hpa.yaml
+  - hpa/payment.hpa.yaml
   - hpa/travel.hpa.yaml
   - hpa/user.hpa.yaml
   - monitoring/prometheus-config.yaml

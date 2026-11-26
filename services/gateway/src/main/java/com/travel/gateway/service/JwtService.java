@@ -42,18 +42,75 @@ public class JwtService {
         return userId != null ? userId.toString() : null;
     }
 
+    public long extractTokenVersion(String token) {
+        Object version = getClaims(token).get("tokenVersion");
+        if (version == null) {
+            return 0;
+        }
+        if (version instanceof Number number && number.longValue() >= 0) {
+            return number.longValue();
+        }
+        return -1;
+    }
+
     // Extracts email from Claims set by Auth Service
     public String extractEmail(String token) {
         return getClaims(token).getSubject();
     }
 
     public String extractRole(String token) {
-        Object roleClaim = getClaims(token).get("role");
-        return roleClaim instanceof String role ? normalizeRole(role) : null;
+        Claims claims = getClaims(token);
+        Object roleClaim = claims.get("role");
+        if (roleClaim != null) {
+            String role = normalizeRoleValue(roleClaim);
+            if (role != null) {
+                return role;
+            }
+        }
+
+        Object rolesClaim = claims.get("roles");
+        if (rolesClaim != null) {
+            return normalizeRoleValue(rolesClaim);
+        }
+
+        return null;
+    }
+
+    private String normalizeRoleValue(Object roleValue) {
+        if (roleValue instanceof String role) {
+            return normalizeRole(role);
+        }
+        if (roleValue instanceof Iterable<?> roles) {
+            for (Object role : roles) {
+                if (role instanceof String roleName) {
+                    String normalized = normalizeRole(roleName);
+                    if (normalized != null) {
+                        return normalized;
+                    }
+                }
+            }
+        } else if (roleValue.getClass().isArray()) {
+            for (Object role : (Object[]) roleValue) {
+                if (role instanceof String roleName) {
+                    String normalized = normalizeRole(roleName);
+                    if (normalized != null) {
+                        return normalized;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private String normalizeRole(String role) {
+        if (role == null) {
+            return null;
+        }
+
         String normalizedRole = role.trim().toUpperCase(Locale.ROOT);
+        if (normalizedRole.isBlank()) {
+            return null;
+        }
         return normalizedRole.startsWith("ROLE_") ? normalizedRole.substring(5) : normalizedRole;
     }
 }

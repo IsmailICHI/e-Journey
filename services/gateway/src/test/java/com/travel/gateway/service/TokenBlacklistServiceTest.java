@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.data.redis.core.ReactiveValueOperations;
 
 import reactor.core.publisher.Mono;
 
@@ -15,14 +16,41 @@ class TokenBlacklistServiceTest {
     private final ReactiveStringRedisTemplate redisTemplate = mock(ReactiveStringRedisTemplate.class);
 
     @Test
-    void checksBothTokenAndUserRevocationKeys() {
+    void rejectsTokensOlderThanTheCurrentUserTokenVersion() {
+        @SuppressWarnings("unchecked")
+        ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(values);
         when(redisTemplate.hasKey("blacklist:token-value")).thenReturn(Mono.just(false));
-        when(redisTemplate.hasKey("blacklist:user:42")).thenReturn(Mono.just(true));
+        when(values.get("blacklist:user:42")).thenReturn(Mono.just("2"));
         TokenBlacklistService service = new TokenBlacklistService(redisTemplate, true);
 
-        assertThat(service.isBlacklisted("token-value", "42").block()).isTrue();
+        assertThat(service.isBlacklisted("token-value", "42", 1).block()).isTrue();
 
         verify(redisTemplate).hasKey("blacklist:token-value");
-        verify(redisTemplate).hasKey("blacklist:user:42");
+        verify(values).get("blacklist:user:42");
+    }
+
+    @Test
+    void allowsTokensIssuedAtTheCurrentUserTokenVersion() {
+        @SuppressWarnings("unchecked")
+        ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(values);
+        when(redisTemplate.hasKey("blacklist:token-value")).thenReturn(Mono.just(false));
+        when(values.get("blacklist:user:42")).thenReturn(Mono.just("2"));
+        TokenBlacklistService service = new TokenBlacklistService(redisTemplate, true);
+
+        assertThat(service.isBlacklisted("token-value", "42", 2).block()).isFalse();
+    }
+
+    @Test
+    void rejectsTokensWhenTheLegacyRevocationMarkerHasNotBeenMigrated() {
+        @SuppressWarnings("unchecked")
+        ReactiveValueOperations<String, String> values = mock(ReactiveValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(values);
+        when(redisTemplate.hasKey("blacklist:token-value")).thenReturn(Mono.just(false));
+        when(values.get("blacklist:user:42")).thenReturn(Mono.just("revoked"));
+        TokenBlacklistService service = new TokenBlacklistService(redisTemplate, true);
+
+        assertThat(service.isBlacklisted("token-value", "42", 1).block()).isTrue();
     }
 }

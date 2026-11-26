@@ -12,3 +12,13 @@ export interface UserProfileResponse {
   role: string;
   state: boolean | null;
 }
+
+export interface PublicManagerResponse {
+  id: number;
+  fullName: string;
+}
+
+export interface UserDisplayResponse {
+  id: number;
+  fullName: string;
+}

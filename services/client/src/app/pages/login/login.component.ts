@@ -34,12 +34,17 @@ export class LoginComponent {
         this.submitting = false;
         this.feedback.showSuccess('Welcome back! Signed in successfully.', 'Sign In Successful');
         const requestedPath = this.route.snapshot.queryParamMap.get('returnUrl');
+        const role = response.role.toUpperCase().replace(/^ROLE_/, '');
         const returnUrl = requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
+          && this.canAccessPath(role, requestedPath)
           ? requestedPath
-          : '/admin';
-        void this.router.navigateByUrl(response.role.toUpperCase().replace(/^ROLE_/, '') === 'ADMIN'
-          ? returnUrl
-          : '/home');
+          : null;
+        const defaultUrl = role === 'ADMIN'
+          ? '/admin'
+          : role === 'TRAVEL_MANAGER'
+            ? '/travel-manager-dashboard'
+            : '/home';
+        void this.router.navigateByUrl(returnUrl ?? defaultUrl);
       },
       error: (error: unknown) => {
         this.submitting = false;
@@ -47,5 +52,20 @@ export class LoginComponent {
         this.feedback.showFromApiError(error, 'Sign In Failed');
       }
     });
+  }
+
+  private canAccessPath(role: string, requestedPath: string): boolean {
+    const path = requestedPath.split(/[?#]/, 1)[0];
+    if (path === '/home' || path === '/profile') {
+      return true;
+    }
+    if (role === 'ADMIN') {
+      return path === '/admin' || path.startsWith('/admin/');
+    }
+    if (role === 'TRAVEL_MANAGER') {
+      return path === '/travel-manager-dashboard' || path === '/traveler-dashboard';
+    }
+    return role === 'TRAVELER'
+      && (path === '/traveler-dashboard' || path.startsWith('/payment/') || path.startsWith('/managers/'));
   }
 }

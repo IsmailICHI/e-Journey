@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: travel-plan
+  labels:
+    app.kubernetes.io/name: payment-service
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: payment-service
+          image: travelplan/payment-service:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8083
+          env:
+            - name: SERVER_PORT
+              value: "8083"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: payment-datasource-url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: postgres-user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: postgres-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: jwt-secret
+            - name: BOOKING_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: booking-service-url
+            - name: BOOKING_PAYMENT_CONFIRMATION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: booking-payment-confirmation-secret
+            - name: PAYPAL_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: paypal-base-url
+            - name: PAYPAL_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: paypal-client-id
+            - name: PAYPAL_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: paypal-client-secret
+            - name: PAYPAL_MAD_PER_USD
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: paypal-mad-per-usd
+            - name: STRIPE_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: stripe-base-url
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: travel-plan-secrets
+                  key: stripe-secret-key
+            - name: CLIENT_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: travel-plan-config
+                  key: client-base-url
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 750m
+              memory: 512Mi

@@ -43,6 +43,7 @@ describe('Admin API services', () => {
   it('uses the admin travel endpoint for listing, creating, updating, and deleting', () => {
     const travel: TravelResponse = {
       travelId: 3,
+      createdByUserId: 42,
       title: 'Coastal trip',
       city: 'Essaouira',
       country: 'Morocco',
@@ -55,6 +56,7 @@ describe('Admin API services', () => {
       accommodation: null,
       transportation: null,
       paymentMethod: 'Stripe',
+      priceMad: 2500,
       itinerary: []
     };
     const apiUrl = `${environment.apiUrl}/api/v1/admin/travels`;
@@ -67,7 +69,7 @@ describe('Admin API services', () => {
     travels.createTravel({
       title: travel.title, city: travel.city, country: travel.country, description: '',
       imageUrl: '', duration: 4, destinations: ['Sidi Kaouki'], startDate: null, endDate: null,
-      accommodation: '', transportation: '', paymentMethod: 'Stripe', itinerary: []
+      accommodation: '', transportation: '', paymentMethod: 'Stripe', priceMad: 2500, itinerary: []
     }).subscribe();
     const createRequest = http.expectOne(apiUrl);
     expect(createRequest.request.method).toBe('POST');
@@ -76,7 +78,7 @@ describe('Admin API services', () => {
     travels.updateTravel(3, {
       title: travel.title, city: travel.city, country: travel.country, description: '',
       imageUrl: '', duration: 4, destinations: [], startDate: null, endDate: null,
-      accommodation: '', transportation: '', paymentMethod: 'PayPal', itinerary: []
+      accommodation: '', transportation: '', paymentMethod: 'PayPal', priceMad: 2500, itinerary: []
     }).subscribe();
     const updateRequest = http.expectOne(`${apiUrl}/3`);
     expect(updateRequest.request.method).toBe('PUT');

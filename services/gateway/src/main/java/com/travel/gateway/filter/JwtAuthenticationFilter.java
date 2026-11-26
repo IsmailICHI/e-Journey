@@ -58,7 +58,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return reject(exchange, HttpStatus.UNAUTHORIZED, "****** has no user identity");
         }
 
-        return tokenBlacklistService.isBlacklisted(token, revocationUserId)
+        long tokenVersion = jwtService.extractTokenVersion(token);
+        return tokenBlacklistService.isBlacklisted(token, revocationUserId, tokenVersion)
                 .materialize()
                 .flatMap(isBlacklisted -> {
                     if (isBlacklisted.isOnError()) {
@@ -76,7 +77,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     }
 
                     String role = jwtService.extractRole(token);
-                    if (isAdminEndpoint(path) && !"ADMIN".equals(role)) {
+                    if (isAdminEndpoint(path) && !hasAdminAccess(path, role)) {
                         return reject(exchange, HttpStatus.FORBIDDEN, "Administrator role required");
                     }
 
@@ -106,6 +107,13 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private boolean isAdminEndpoint(String path) {
         return "/api/v1/admin".equals(path) || path.startsWith("/api/v1/admin/");
+    }
+
+    private boolean hasAdminAccess(String path, String role) {
+        return "ADMIN".equals(role)
+                || ("TRAVEL_MANAGER".equals(role)
+                        && ("/api/v1/admin/travels".equals(path)
+                                || path.startsWith("/api/v1/admin/travels/")));
     }
 
     private Mono<Void> reject(ServerWebExchange exchange, HttpStatus status, String message) {

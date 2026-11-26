@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 
 public record TravelRequest(
@@ -64,6 +65,10 @@ public record TravelRequest(
         @NotBlank(message = "Payment method is required")
         @Pattern(regexp = "Stripe|PayPal", message = "Payment method must be either 'Stripe' or 'PayPal'")
         String paymentMethod,
+
+        @NotNull(message = "Price in MAD is required")
+        @Positive(message = "Price must be greater than zero")
+        BigDecimal priceMad,
 
         @Size(max = 10, message = "Itinerary cannot contain more than 10 items")
         List<@Valid ItineraryRequest> itinerary) {

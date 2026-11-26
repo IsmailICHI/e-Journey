@@ -1,0 +1,64 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import { PaymentAnalyticsResponse } from '../models/booking.model';
+
+export type PaymentProvider = 'PAYPAL' | 'STRIPE';
+
+export interface PaymentOrderResponse {
+  paymentId: number;
+  bookingId: number;
+  travelId: number | null;
+  managerId: number | null;
+  amount: number;
+  amountMad: number;
+  madPerUsdRate: number | null;
+  currency: string;
+  providerOrderId: string | null;
+  provider: PaymentProvider;
+  status: string;
+  approvalUrl: string;
+}
+
+@Injectable({ providedIn: 'root' })
+export class PaymentService {
+  private readonly http = inject(HttpClient);
+  private readonly paymentsUrl = `${environment.apiUrl}/api/v1/payments`;
+
+  createOrder(
+    bookingId: number,
+    provider: PaymentProvider | null = null,
+    restart = false
+  ): Observable<PaymentOrderResponse> {
+    return this.http.post<PaymentOrderResponse>(`${this.paymentsUrl}/orders`, {
+      bookingId,
+      provider,
+      restart
+    });
+  }
+
+  capture(paymentId: number): Observable<PaymentOrderResponse> {
+    return this.http.post<PaymentOrderResponse>(`${this.paymentsUrl}/${paymentId}/capture`, {});
+  }
+
+  completeStripeSession(sessionId: string): Observable<PaymentOrderResponse> {
+    return this.http.post<PaymentOrderResponse>(`${this.paymentsUrl}/stripe/complete`, { sessionId });
+  }
+
+  getManagerAnalytics(months = 3): Observable<PaymentAnalyticsResponse> {
+    return this.http.get<PaymentAnalyticsResponse>(`${environment.apiUrl}/api/v1/manager/payments/analytics`, {
+      params: { months }
+    });
+  }
+
+  getAdminAnalytics(months = 3): Observable<PaymentAnalyticsResponse> {
+    return this.http.get<PaymentAnalyticsResponse>(`${environment.apiUrl}/api/v1/admin/payments/analytics`, {
+      params: { months }
+    });
+  }
+
+  getAdminPaymentHistory(): Observable<PaymentOrderResponse[]> {
+    return this.http.get<PaymentOrderResponse[]>(`${environment.apiUrl}/api/v1/admin/payments/history`);
+  }
+}

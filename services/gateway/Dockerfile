@@ -1,9 +1,8 @@
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
-COPY services/gateway/.mvn .mvn
-COPY services/gateway/mvnw services/gateway/pom.xml ./
+COPY services/gateway/pom.xml ./
 COPY services/gateway/src ./src
-RUN chmod +x mvnw && ./mvnw -B -DskipTests package
+RUN mvn -B -DskipTests package
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

@@ -2,6 +2,7 @@ package com.travel.travel_service.dto;
 
 import java.util.List;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 
 public record TravelResponse(
         Long travelId,
@@ -17,6 +18,8 @@ public record TravelResponse(
         String accommodation,
         String transportation,
         String paymentMethod,
+        BigDecimal priceMad,
+        Long createdByUserId,
         List<ItineraryResponse> itinerary
 ) {
 }

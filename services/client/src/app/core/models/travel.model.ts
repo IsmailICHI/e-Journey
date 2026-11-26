@@ -27,6 +27,8 @@ export interface TravelResponse {
   accommodation: string | null;
   transportation: string | null;
   paymentMethod: string | null;
+  priceMad: number | null;
+  createdByUserId: number | null;
   itinerary: ItineraryResponse[];
 }
 
@@ -43,5 +45,6 @@ export interface TravelRequest {
   accommodation: string;
   transportation: string;
   paymentMethod: string;
+  priceMad: number;
   itinerary: ItineraryRequest[];
 }

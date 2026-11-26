@@ -1,4 +1,30 @@
 ---
+- name: Persist the virtual memory map count required by Elasticsearch
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-travel-plan-elasticsearch.conf
+    content: "vm.max_map_count=262144\n"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Read the current virtual memory map count
+  ansible.builtin.command:
+    argv:
+      - sysctl
+      - -n
+      - vm.max_map_count
+  register: elasticsearch_vm_max_map_count
+  changed_when: false
+
+- name: Raise the virtual memory map count for Elasticsearch
+  ansible.builtin.command:
+    argv:
+      - sysctl
+      - -w
+      - vm.max_map_count=262144
+  when: elasticsearch_vm_max_map_count.stdout | int < 262144
+  changed_when: true
+
 - name: Ensure the system resolver drop-in directory exists
   ansible.builtin.file:
     path: /etc/systemd/resolved.conf.d
