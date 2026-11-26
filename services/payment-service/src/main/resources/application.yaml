@@ -17,7 +17,7 @@ spring:
     show-sql: false
 
 jwt:
-  secret: ${JWT_SECRET:defaultsecretkeydefaultsecretkeydefaultsecretkey}
+  secret: ${JWT_SECRET}
 
 paypal:
   base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}

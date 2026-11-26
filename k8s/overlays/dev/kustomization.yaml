@@ -49,18 +49,12 @@ patches:
         path: /spec/maxReplicas
         value: 4
   - target:
-      kind: Deployment
-      name: gateway
+      kind: ConfigMap
+      name: travel-plan-config
     patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
+      apiVersion: v1
+      kind: ConfigMap
       metadata:
-        name: gateway
-      spec:
-        template:
-          spec:
-            containers:
-              - name: gateway
-                env:
-                  - name: CORS_ALLOWED_ORIGINS
-                    value: https://travel-plan.local:8443
+        name: travel-plan-config
+      data:
+        cors-allowed-origins: https://travel-plan.local:8443

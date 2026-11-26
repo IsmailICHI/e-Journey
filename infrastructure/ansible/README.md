@@ -89,6 +89,7 @@ ansible-playbook -i infrastructure/ansible/inventories/dev/hosts.yml infrastruct
 ```
 
 The first command creates a single Ubuntu VM and syncs this repository to `/vagrant`. Ansible connects as the Vagrant user; `become: true` elevates only inside the VM, where the Vagrant account has passwordless sudo. The `k3s` role installs Docker and k3s, then configures kubectl access. k3s itself uses containerd.
+The install playbook also persists `vm.max_map_count=262144`, required by the Elasticsearch container.
 
 ## Start Jenkins and SonarQube
 
@@ -106,20 +107,24 @@ Jenkins, SonarQube, and the app available to the workstation at
 
 ## Deploy and validate
 
-The deploy playbook creates the `travel-plan` namespace, copies `files/travel-plan-secrets.yaml` to the VM, and applies it before deploying the workloads. The manifest contains intentionally simple development-only credentials for this learning environment. Re-running deployment reapplies the same Secret, so you do not need to create it manually after deleting cluster resources. Do not use these credentials outside this local learning setup.
+The deploy playbook creates the `travel-plan` namespace and builds the `travel-plan-secrets` Secret from the repository-root `.env` file on the workstation (override the path with `-e travel_plan_env_file=/path/to/.env`). It requires `JWT_SECRET`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `NEO4J_PASSWORD` and `BOOKING_PAYMENT_CONFIRMATION_SECRET`; the PayPal and Stripe keys are optional. The values are sent to `kubectl` over stdin with server-side apply, so they are never written to disk on the VM or copied in plain text into the `last-applied-configuration` annotation. No credentials are stored in the repository; `.env` is ignored by Git.
+
+PostgreSQL and Neo4j only read their credentials when their data volume is first created. If you change `POSTGRES_USER`, `POSTGRES_PASSWORD` or `NEO4J_PASSWORD` after the first deployment, delete the `postgres` and `neo4j` StatefulSet pods and their PersistentVolumeClaims (this erases their data) before redeploying.
 
 ```bash
 ansible-playbook -i infrastructure/ansible/inventories/dev/hosts.yml infrastructure/ansible/playbooks/deploy-app.yml
 ansible-playbook -i infrastructure/ansible/inventories/dev/hosts.yml infrastructure/ansible/playbooks/validate-cluster.yml
 ```
 
-`deploy-app.yml` is the manual development path. The Jenkins pipeline instead
+`deploy-app.yml` is the manual development path. It builds and imports all
+application images, including booking and payment. The Jenkins pipeline instead
 uses `deploy-ci.yml` and the `k3s` role to import images built from the tested
 workspace, apply that checkout's Kubernetes manifests, use the workspace copy
-of `.env` for the application Secret, and wait for application rollouts. The
-temporary `.env` copy is removed by Jenkins even when a stage fails. The
-payment service is not included. The app ingress is forwarded to
-`http://localhost:8088`.
+of `.env` for the application Secret, and wait for dependency and application
+rollouts. The temporary `.env` copy is removed by Jenkins even when a stage
+fails. The dev HTTPS ingress is available at
+`https://travel-plan.local:8443` after configuring the workstation hosts file
+and trusting the development certificate.
 
 The root Jenkinsfile needs a Jenkins Secret text credential with ID
 `sonar-token`. Deployment runs only from `main`; Ansible uses a dedicated
